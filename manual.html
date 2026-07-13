@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>PDF Toolkit 사용 설명서</title>
+    <style>
+        /* A4 Printing Styles */
+        @page {
+            size: A4 portrait;
+            margin: 12mm 15mm;
+        }
+        
+        body {
+            font-family: 'Malgun Gothic', '맑은 고딕', sans-serif;
+            margin: 0;
+            padding: 0;
+            color: #333;
+            background-color: #fff;
+            line-height: 1.55;
+            font-size: 10pt;
+        }
+
+        .container {
+            max-width: 100%;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            border-bottom: 3px solid #111827;
+            padding-bottom: 8px;
+            margin-bottom: 14px;
+        }
+
+        .header h1 {
+            color: #111827;
+            margin: 0;
+            font-size: 22pt;
+            letter-spacing: -0.5px;
+        }
+
+        .header p {
+            color: #6366f1;
+            margin: 4px 0 0 0;
+            font-size: 11pt;
+            font-weight: bold;
+        }
+
+        .header .version {
+            font-size: 9pt;
+            color: #888;
+            margin-top: 2px;
+        }
+
+        /* Intro */
+        .intro {
+            background-color: #f0f4f8;
+            border-left: 4px solid #6366f1;
+            padding: 8px 12px;
+            margin-bottom: 14px;
+            font-size: 9.5pt;
+        }
+
+        .intro strong { color: #111827; }
+
+        /* Section Cards */
+        .section {
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            padding: 10px 14px;
+            margin-bottom: 12px;
+            page-break-inside: avoid;
+        }
+
+        .section h2 {
+            color: #111827;
+            margin: 0 0 8px 0;
+            font-size: 13pt;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid #e5e7eb;
+            padding-bottom: 6px;
+        }
+
+        .section h2 span.icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #6366f1;
+            color: white;
+            border-radius: 50%;
+            width: 22px;
+            height: 22px;
+            margin-right: 8px;
+            font-size: 11pt;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        .section p.desc {
+            margin: 0 0 6px 0;
+            color: #555;
+            font-size: 9.5pt;
+        }
+
+        /* Two column layout */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        /* Lists */
+        ul {
+            margin: 0;
+            padding-left: 18px;
+        }
+
+        li {
+            margin-bottom: 5px;
+            font-size: 9.5pt;
+        }
+
+        li li {
+            margin-bottom: 3px;
+            font-size: 9pt;
+        }
+
+        strong {
+            color: #111827;
+        }
+
+        .hl {
+            background-color: #eef2ff;
+            padding: 1px 4px;
+            border-radius: 3px;
+            color: #4f46e5;
+            font-weight: bold;
+            font-size: 9pt;
+        }
+
+        em {
+            font-style: normal;
+            color: #6366f1;
+        }
+
+        /* Shortcut keys */
+        kbd {
+            display: inline-block;
+            background: #f3f4f6;
+            border: 1px solid #d1d5db;
+            border-radius: 3px;
+            padding: 0 4px;
+            font-size: 8.5pt;
+            font-family: inherit;
+            color: #374151;
+            line-height: 1.6;
+        }
+
+        /* Tips */
+        .tip {
+            background: #fefce8;
+            border: 1px solid #fde68a;
+            border-radius: 4px;
+            padding: 6px 10px;
+            margin-top: 6px;
+            font-size: 9pt;
+            color: #92400e;
+        }
+
+        .tip::before {
+            content: '💡 ';
+        }
+
+        /* Compact table */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 9pt;
+            margin-top: 6px;
+        }
+        th, td {
+            border: 1px solid #d1d5db;
+            padding: 4px 8px;
+            text-align: left;
+        }
+        th {
+            background: #f3f4f6;
+            font-weight: 600;
+            color: #111827;
+        }
+
+        /* Footer */
+        .footer {
+            margin-top: 16px;
+            text-align: center;
+            font-size: 8.5pt;
+            color: #888;
+            border-top: 1px solid #d1d5db;
+            padding-top: 8px;
+        }
+
+        .footer .credit {
+            margin-top: 3px;
+            font-size: 8pt;
+            color: #aaa;
+        }
+
+        /* Print Specifics */
+        @media print {
+            body {
+                background: white;
+            }
+            .section {
+                box-shadow: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>PDF Toolkit 사용 설명서</h1>
+            <p>올인원 PDF 도구 — 병합 · 분할 · 워터마크 · 프린트용 변환</p>
+            <div class="version">오프라인(Standalone) · 인터넷 연결 불필요 · 브라우저 단독 실행</div>
+        </div>
+
+        <!-- Intro -->
+        <div class="intro">
+            <strong>실행 방법:</strong> <span class="hl">index.html</span> 파일을 웹 브라우저(Chrome, Edge 등)로 열어주세요. 모든 처리는 사용자 PC 내에서 이루어지며, 파일이 서버로 전송되지 않습니다.
+        </div>
+
+        <!-- 2-column layout -->
+        <div class="grid-2">
+
+            <!-- 1. Merge -->
+            <div class="section">
+                <h2><span class="icon">1</span>PDF 병합</h2>
+                <p class="desc">여러 PDF 및 이미지 파일을 하나의 PDF로 합칩니다.</p>
+                <ul>
+                    <li><strong>파일 추가:</strong> 파일을 드래그하거나 <span class="hl">파일 선택</span> 클릭 (PDF, JPG, PNG, BMP, GIF, TIFF, WebP 지원)</li>
+                    <li><strong>추가 파일:</strong> 파일이 이미 로드된 상태에서도 화면 위에 파일을 드래그하면 바로 추가 가능. <span class="hl">+</span> 버튼도 사용 가능</li>
+                    <li><strong>파일 순서 변경:</strong>
+                        <ul>
+                            <li>상단 파일 목록에서 다중 선택 후 드래그 앤 드롭</li>
+                            <li>선택: <kbd>클릭</kbd> 단일 / <kbd>Ctrl+클릭</kbd> 추가 / <kbd>Shift+클릭</kbd> 범위</li>
+                        </ul>
+                    </li>
+                    <li><strong>이름순 정렬:</strong> 헤더의 <span class="hl">↑ A→Z</span> / <span class="hl">↓ Z→A</span> 버튼으로 파일명 오름·내림차순 정렬</li>
+                    <li><strong>페이지 순서 변경:</strong> 하단 미리보기에서 다중 선택 → 드래그로 페이지 단위 재배치</li>
+                    <li><strong>페이지 회전:</strong> 개별 또는 전체 90° 회전</li>
+                    <li><strong>북마크(목차):</strong>
+                        <ul>
+                            <li><em>자동 생성:</em> 파일명 기준 자동 목차 생성</li>
+                            <li><em>수동 추가:</em> 제목·페이지·계층 구조 편집 가능</li>
+                        </ul>
+                    </li>
+                    <li><strong>결과 저장:</strong> <span class="hl">PDF 병합 및 다운로드</span> 클릭</li>
+                </ul>
+            </div>
+
+            <!-- 2. Split -->
+            <div class="section">
+                <h2><span class="icon">2</span>PDF 분할</h2>
+                <p class="desc">PDF에서 원하는 페이지를 선별 추출하거나 개별 분할합니다.</p>
+                <ul>
+                    <li><strong>파일 추가:</strong> 분할할 PDF 파일 1개를 업로드</li>
+                    <li><strong>페이지 선택:</strong> 미리보기에서 추출할 페이지를 클릭하여 선택 (전체 선택 지원)</li>
+                    <li><strong>페이지 회전:</strong> 선택 페이지만 90°씩 회전 가능 (회전 상태가 추출 결과에 반영됨)</li>
+                    <li><strong>추출 방법 2가지:</strong>
+                        <ul>
+                            <li><em>하나의 PDF로 추출:</em> 선택한 페이지들을 1개의 PDF로 합쳐서 저장</li>
+                            <li><em>개별 분할 다운로드:</em> 선택한 페이지를 각각 개별 파일로 분할 (ZIP 다운로드)</li>
+                        </ul>
+                    </li>
+                    <li><strong>출력 형식:</strong>
+                        <table>
+                            <tr><th>형식</th><th>설명</th></tr>
+                            <tr><td>PDF</td><td>페이지별 PDF 파일 (또는 합본 PDF)</td></tr>
+                            <tr><td>PNG</td><td>고해상도 이미지 (1x/2x/3x DPI 선택)</td></tr>
+                            <tr><td>JPEG</td><td>고해상도 이미지 (1x/2x/3x DPI 선택)</td></tr>
+                        </table>
+                    </li>
+                    <li><strong>파일 이름:</strong> 분할 파일명에 4자리 일련번호 부여 (<code>_page0001</code>, <code>_page0002</code> …) — 파일 정렬 용이</li>
+                </ul>
+            </div>
+
+            <!-- 3. Watermark -->
+            <div class="section">
+                <h2><span class="icon">3</span>워터마크 삽입</h2>
+                <p class="desc">PDF 위에 로고·도장·텍스트 이미지를 투명하게 겹쳐 삽입합니다.</p>
+                <ul>
+                    <li><strong>원문 PDF:</strong> 워터마크를 입힐 바탕 PDF 파일 업로드</li>
+                    <li><strong>워터마크 파일:</strong> 겹쳐 올릴 파일 업로드 (PDF, JPG, PNG)</li>
+                    <li><strong>배치 위치:</strong>
+                        <ul>
+                            <li>중앙, 좌상단, 우상단, 좌하단, 우하단</li>
+                            <li><em>대각선 반복:</em> 격자 패턴으로 워터마크 타일 배치</li>
+                        </ul>
+                    </li>
+                    <li><strong>불투명도:</strong> 슬라이더로 0~100% 조절</li>
+                    <li><strong>크기:</strong> 슬라이더로 10~200% 조절</li>
+                    <li><strong>여백:</strong> 가장자리 배치 시 여백(mm) 조절 가능</li>
+                    <li><strong>미리보기:</strong> <span class="hl">미리보기 생성</span> 버튼으로 적용 결과 확인 (Multiply 블렌딩으로 원본 글씨 가려지지 않음)</li>
+                    <li><strong>결과 저장:</strong> <span class="hl">워터마크 삽입 후 다운로드</span> 클릭</li>
+                </ul>
+            </div>
+
+            <!-- 4. Print Conversion -->
+            <div class="section">
+                <h2><span class="icon">4</span>프린트용 변환</h2>
+                <p class="desc">긴 스크린샷 이미지를 A4 용지 폭에 맞게 확대하여 다중 페이지 PDF로 변환합니다.</p>
+                <ul>
+                    <li><strong>이미지 추가:</strong> 긴 스크린샷(PNG, JPG 등) 파일을 드래그 또는 선택</li>
+                    <li><strong>용지 설정:</strong>
+                        <table>
+                            <tr><th>옵션</th><th>설명</th></tr>
+                            <tr><td>용지 크기</td><td>A4 / Letter / Legal</td></tr>
+                            <tr><td>용지 방향</td><td>세로(Portrait) / 가로(Landscape)</td></tr>
+                            <tr><td>여백</td><td>0~30mm 슬라이더 조절</td></tr>
+                            <tr><td>페이지 겹침</td><td>0~50mm — 이전 페이지 끝부분을 다음 페이지에 중복 표시하여 내용 연결 보장</td></tr>
+                        </table>
+                    </li>
+                    <li><strong>실시간 미리보기:</strong> 옵션 변경 시 페이지 분할 결과가 즉시 업데이트됨</li>
+                    <li><strong>비율 유지:</strong> 마지막 페이지에 남은 이미지가 적을 경우 용지에 늘리지 않고 원본 비율 그대로 출력</li>
+                    <li><strong>결과 저장:</strong> <span class="hl">N페이지 PDF 다운로드</span> 클릭</li>
+                </ul>
+                <div class="tip">휴대전화 긴 캡처(스크롤 캡처)를 A4 용지에 맞춰 인쇄하고 싶을 때 유용합니다.</div>
+            </div>
+
+        </div>
+
+        <!-- Keyboard shortcuts -->
+        <div class="section" style="margin-top: 0;">
+            <h2 style="font-size: 11pt;"><span class="icon" style="width:20px;height:20px;font-size:10pt;">⌨</span>공통 조작 안내</h2>
+            <table>
+                <tr><th style="width:35%;">조작</th><th>설명</th></tr>
+                <tr><td><kbd>클릭</kbd></td><td>항목 1개 선택 (기존 선택 해제)</td></tr>
+                <tr><td><kbd>Ctrl</kbd> + <kbd>클릭</kbd></td><td>항목 추가 선택 / 선택 해제</td></tr>
+                <tr><td><kbd>Shift</kbd> + <kbd>클릭</kbd></td><td>범위 선택 (첫 선택~현재 클릭 사이 모두 선택)</td></tr>
+                <tr><td>드래그 앤 드롭</td><td>선택된 항목(들)을 원하는 위치로 이동</td></tr>
+                <tr><td><kbd>Ctrl</kbd> + <kbd>P</kbd></td><td>이 설명서를 A4 크기로 인쇄</td></tr>
+            </table>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            이 설명서는 브라우저에서 <kbd>Ctrl</kbd> + <kbd>P</kbd>를 눌러 A4 용지로 인쇄할 수 있습니다.
+            <div class="credit">PDF Toolkit © 2026 Seongwon Yun (L.I.) · Powered by Google Antigravity</div>
+        </div>
+    </div>
+</body>
+</html>

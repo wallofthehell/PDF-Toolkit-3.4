@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="PDF 파일 병합, 분할, 회전 도구 - 브라우저에서 바로 사용하는 무료 PDF 편집기">
+    <title>PDF Toolkit — 병합 · 분할 · 워터마크 · 프린트변환</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- PDF.js for rendering -->
+    <script src="lib/pdf.min.js"></script>
+    <!-- pdf-lib for manipulation -->
+    <script src="lib/pdf-lib.min.js"></script>
+    <!-- JSZip for batch download -->
+    <script src="lib/jszip.min.js"></script>
+    <!-- FileSaver for download triggers -->
+    <script src="lib/FileSaver.min.js"></script>
+</head>
+<body>
+    <!-- Background animated elements -->
+    <div class="bg-gradient"></div>
+    <div class="bg-orbs">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+    </div>
+
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header" id="appHeader">
+            <div class="logo-section">
+                <div class="logo-icon">
+                    <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                        <rect x="4" y="2" width="18" height="24" rx="3" fill="url(#logoGrad1)" opacity="0.7"/>
+                        <rect x="10" y="6" width="18" height="24" rx="3" fill="url(#logoGrad2)"/>
+                        <path d="M16 14L22 18L16 22V14Z" fill="white" opacity="0.9"/>
+                        <defs>
+                            <linearGradient id="logoGrad1" x1="4" y1="2" x2="22" y2="26">
+                                <stop stop-color="#5BA3E6"/>
+                                <stop offset="1" stop-color="#8EC8FF"/>
+                            </linearGradient>
+                            <linearGradient id="logoGrad2" x1="10" y1="6" x2="28" y2="30">
+                                <stop stop-color="#1E58A8"/>
+                                <stop offset="1" stop-color="#5BA3E6"/>
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="logo-text">PDF Toolkit</h1>
+                    <p class="logo-sub">병합 · 분할 · 워터마크 · 프린트변환</p>
+                </div>
+            </div>
+        </header>
+
+        <!-- Tab Navigation -->
+        <nav class="tab-nav" id="tabNav">
+            <button class="tab-btn active" data-tab="merge" id="tabMerge">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                    <rect x="2" y="3" width="7" height="10" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
+                    <rect x="11" y="7" width="7" height="10" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
+                    <path d="M10 13L13 10M10 13L7 10M10 13V5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" transform="rotate(90 10 10)"/>
+                </svg>
+                <span>PDF 병합</span>
+            </button>
+            <button class="tab-btn" data-tab="split" id="tabSplit">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                    <rect x="2" y="3" width="16" height="14" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
+                    <line x1="10" y1="3" x2="10" y2="17" stroke="currentColor" stroke-width="1.5" stroke-dasharray="2 2"/>
+                    <path d="M6 10L4 10M14 10L16 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+                <span>PDF 분할</span>
+            </button>
+            <button class="tab-btn" data-tab="watermark" id="tabWatermark">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                    <path d="M10 2C10 2 4 9 4 13C4 16.3 6.7 18 10 18C13.3 18 16 16.3 16 13C16 9 10 2 10 2Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M7 14C7.5 15.5 9 16.5 10.5 16.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity="0.6"/>
+                </svg>
+                <span>워터마크</span>
+            </button>
+            <button class="tab-btn" data-tab="printconv" id="tabPrintConv">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                    <rect x="6" y="2" width="8" height="16" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
+                    <path d="M8 7h4M8 10h4M8 13h2" stroke="currentColor" stroke-width="1" stroke-linecap="round" opacity="0.5"/>
+                    <path d="M2 6h3v8H2zM15 6h3v8h-3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="2 1.5"/>
+                    <path d="M1 10h4M15 10h4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity="0.4"/>
+                </svg>
+                <span>프린트용 변환</span>
+            </button>
+        </nav>
+
+        <!-- Merge Section -->
+        <section class="tab-content active" id="mergeSection">
+            <!-- Drop Zone -->
+            <div class="drop-zone" id="mergeDropZone">
+                <div class="drop-zone-inner">
+                    <div class="drop-icon">
+                        <svg width="56" height="56" viewBox="0 0 56 56" fill="none">
+                            <circle cx="28" cy="28" r="26" stroke="url(#dropGrad)" stroke-width="2" stroke-dasharray="6 4" opacity="0.5"/>
+                            <path d="M28 18V38M18 28H38" stroke="url(#dropGrad)" stroke-width="2.5" stroke-linecap="round"/>
+                            <defs>
+                                <linearGradient id="dropGrad" x1="0" y1="0" x2="56" y2="56">
+                                    <stop stop-color="#5BA3E6"/>
+                                    <stop offset="1" stop-color="#8EC8FF"/>
+                                </linearGradient>
+                            </defs>
+                        </svg>
+                    </div>
+                    <p class="drop-text">PDF 또는 이미지 파일을 여기에 드래그하거나</p>
+                    <button class="btn-select" id="mergeSelectBtn">파일 선택</button>
+                    <p class="drop-hint">PDF, PNG, JPG, BMP, GIF, TIFF, WebP 파일을 함께 선택할 수 있습니다</p>
+                    <input type="file" id="mergeFileInput" accept=".pdf,.png,.jpg,.jpeg,.bmp,.gif,.tiff,.tif,.webp" multiple hidden>
+                </div>
+            </div>
+
+            <!-- File list -->
+            <div class="file-list-section hidden" id="mergeFileList">
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                            <rect x="2" y="2" width="6" height="6" rx="1" fill="currentColor" opacity="0.4"/>
+                            <rect x="10" y="2" width="6" height="6" rx="1" fill="currentColor" opacity="0.6"/>
+                            <rect x="2" y="10" width="6" height="6" rx="1" fill="currentColor" opacity="0.8"/>
+                            <rect x="10" y="10" width="6" height="6" rx="1" fill="currentColor"/>
+                        </svg>
+                        업로드된 파일
+                        <span class="badge" id="mergeFileCount">0</span>
+                    </h2>
+                    <div class="section-actions">
+                        <button class="btn-icon" id="mergeSortAsc" title="이름 오름차순 정렬 (A→Z)">
+                            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                                <path d="M4 13V5M2 7L4 5L6 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M9 5h6M9 9h4M9 13h2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                            </svg>
+                        </button>
+                        <button class="btn-icon" id="mergeSortDesc" title="이름 내림차순 정렬 (Z→A)">
+                            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                                <path d="M4 5V13M2 11L4 13L6 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M9 5h2M9 9h4M9 13h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                            </svg>
+                        </button>
+                        <button class="btn-icon" id="mergeAddMore" title="파일 추가">
+                            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                                <path d="M9 3V15M3 9H15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            </svg>
+                        </button>
+                        <button class="btn-icon btn-danger" id="mergeClearAll" title="전체 삭제">
+                            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                                <path d="M4 5H14M7 5V3H11V5M6 5V15H12V5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Draggable file items container -->
+                <div class="file-items" id="mergeFileItems">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+            <!-- Pages grid for merge -->
+            <div class="pages-section hidden" id="mergePagesSection">
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                            <rect x="1" y="1" width="7" height="9" rx="1" stroke="currentColor" stroke-width="1.2"/>
+                            <rect x="10" y="1" width="7" height="9" rx="1" stroke="currentColor" stroke-width="1.2"/>
+                            <rect x="1" y="12" width="7" height="5" rx="1" stroke="currentColor" stroke-width="1.2"/>
+                            <rect x="10" y="12" width="7" height="5" rx="1" stroke="currentColor" stroke-width="1.2"/>
+                        </svg>
+                        페이지 미리보기
+                        <span class="badge" id="mergePageCount">0</span>
+                    </h2>
+                    <div class="section-actions">
+                        <button class="btn-text" id="mergeRotateAll" title="전체 회전">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                <path d="M2 8C2 4.7 4.7 2 8 2C10.2 2 12.1 3.3 13 5.2M14 8C14 11.3 11.3 14 8 14C5.8 14 3.9 12.7 3 10.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                <path d="M13 2V5.2H9.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            전체 90° 회전
+                        </button>
+                    </div>
+                </div>
+                <div class="pages-grid" id="mergePagesGrid">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+            <!-- Bookmark management -->
+            <div class="bookmark-section hidden" id="mergeBookmarkSection">
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                            <path d="M5 2h8a1 1 0 011 1v13l-5-2.5L4 16V3a1 1 0 011-1z" stroke="currentColor" stroke-width="1.3" fill="none"/>
+                        </svg>
+                        북마크 (책갈피)
+                        <span class="badge" id="mergeBookmarkCount">0</span>
+                    </h2>
+                    <div class="section-actions">
+                        <button class="btn-text" id="mergeAutoBookmark" title="파일별 자동 생성">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                <path d="M2 4h12M2 8h8M2 12h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                            </svg>
+                            파일별 자동 생성
+                        </button>
+                        <button class="btn-text" id="mergeAddBookmark" title="북마크 추가">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                <path d="M8 3V13M3 8H13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                            </svg>
+                            북마크 추가
+                        </button>
+                        <button class="btn-icon btn-danger btn-sm" id="mergeClearBookmarks" title="전체 삭제">
+                            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                                <path d="M3 3L11 11M11 3L3 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <p class="bookmark-hint" id="mergeBookmarkHint">
+                    북마크를 추가하면 병합된 PDF에서 목차처럼 클릭하여 해당 페이지로 바로 이동할 수 있습니다.
+                </p>
+                <div class="bookmark-tree" id="mergeBookmarkTree">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+            <!-- Merge action -->
+            <div class="action-bar hidden" id="mergeActionBar">
+                <div class="action-info">
+                    <span id="mergeActionInfo">0개 파일, 0개 페이지</span>
+                </div>
+                <button class="btn-primary btn-lg" id="mergePdfBtn">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <path d="M10 4V16M4 10H16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                    PDF 병합 및 다운로드
+                </button>
+            </div>
+        </section>
+
+        <!-- Split Section -->
+        <section class="tab-content" id="splitSection">
+            <!-- Drop Zone -->
+            <div class="drop-zone" id="splitDropZone">
+                <div class="drop-zone-inner">
+                    <div class="drop-icon">
+                        <svg width="56" height="56" viewBox="0 0 56 56" fill="none">
+                            <circle cx="28" cy="28" r="26" stroke="url(#dropGrad2)" stroke-width="2" stroke-dasharray="6 4" opacity="0.5"/>
+                            <rect x="16" y="14" width="24" height="28" rx="3" stroke="url(#dropGrad2)" stroke-width="2"/>
+                            <line x1="28" y1="14" x2="28" y2="42" stroke="url(#dropGrad2)" stroke-width="2" stroke-dasharray="3 3"/>
+                            <defs>
+                                <linearGradient id="dropGrad2" x1="0" y1="0" x2="56" y2="56">
+                                    <stop stop-color="#5BA3E6"/>
+                                    <stop offset="1" stop-color="#8EC8FF"/>
+                                </linearGradient>
+                            </defs>
+                        </svg>
+                    </div>
+                    <p class="drop-text">분할할 PDF 파일을 드래그하거나</p>
+                    <button class="btn-select" id="splitSelectBtn">파일 선택</button>
+                    <p class="drop-hint">하나의 PDF 파일을 선택해주세요</p>
+                    <input type="file" id="splitFileInput" accept=".pdf" hidden>
+                </div>
+            </div>
+
+            <!-- Split file info -->
+            <div class="file-info-bar hidden" id="splitFileInfo">
+                <div class="file-info-left">
+                    <div class="file-icon-sm">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <rect x="3" y="1" width="14" height="18" rx="2" fill="#ef4444" opacity="0.15" stroke="#ef4444" stroke-width="1.2"/>
+                            <text x="10" y="13" text-anchor="middle" fill="#ef4444" font-size="6" font-weight="700">PDF</text>
+                        </svg>
+                    </div>
+                    <div>
+                        <span class="file-info-name" id="splitFileName">—</span>
+                        <span class="file-info-meta" id="splitFileMeta">—</span>
+                    </div>
+                </div>
+                <button class="btn-icon btn-danger" id="splitRemoveFile" title="파일 제거">
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                        <path d="M5 5L13 13M13 5L5 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Split pages grid -->
+            <div class="pages-section hidden" id="splitPagesSection">
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                            <rect x="1" y="1" width="7" height="9" rx="1" stroke="currentColor" stroke-width="1.2"/>
+                            <rect x="10" y="1" width="7" height="9" rx="1" stroke="currentColor" stroke-width="1.2"/>
+                            <rect x="1" y="12" width="7" height="5" rx="1" stroke="currentColor" stroke-width="1.2"/>
+                            <rect x="10" y="12" width="7" height="5" rx="1" stroke="currentColor" stroke-width="1.2"/>
+                        </svg>
+                        페이지 미리보기
+                        <span class="badge" id="splitPageCount">0</span>
+                    </h2>
+                    <div class="section-actions">
+                        <button class="btn-text" id="splitSelectAll" title="전체 선택">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                <rect x="1" y="1" width="14" height="14" rx="2" stroke="currentColor" stroke-width="1.5"/>
+                                <path d="M4 8L7 11L12 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            전체 선택
+                        </button>
+                        <button class="btn-text" id="splitRotateAll" title="전체 회전">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                <path d="M2 8C2 4.7 4.7 2 8 2C10.2 2 12.1 3.3 13 5.2M14 8C14 11.3 11.3 14 8 14C5.8 14 3.9 12.7 3 10.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                <path d="M13 2V5.2H9.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            선택 90° 회전
+                        </button>
+                    </div>
+                </div>
+                <div class="pages-grid" id="splitPagesGrid">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+            <!-- Split options and action -->
+            <div class="action-bar hidden" id="splitActionBar">
+                <div class="action-options">
+                    <label class="action-label">출력 형식:</label>
+                    <div class="format-selector" id="splitFormatSelector">
+                        <button class="format-btn active" data-format="pdf">PDF</button>
+                        <button class="format-btn" data-format="png">PNG</button>
+                        <button class="format-btn" data-format="jpeg">JPEG</button>
+                    </div>
+                    <div class="scale-group hidden" id="splitScaleGroup">
+                        <label class="action-label">해상도:</label>
+                        <select class="select-sm" id="splitScale">
+                            <option value="1">1x (72 DPI)</option>
+                            <option value="2" selected>2x (144 DPI)</option>
+                            <option value="3">3x (216 DPI)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="action-btns">
+                    <button class="btn-primary btn-lg" id="splitMergeBtn" title="선택한 페이지를 하나의 PDF로 합쳐서 추출">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <path d="M4 3h12a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V4a1 1 0 011-1z" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="M10 7V13M7 10H13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                        <span id="splitMergeLabel">하나의 PDF로 추출</span>
+                    </button>
+                    <button class="btn-primary btn-lg" id="splitDownloadBtn">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <path d="M10 3V13M6 9L10 13L14 9M4 16H16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <span id="splitDownloadLabel">개별 분할 다운로드</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Watermark Section -->
+        <section class="tab-content" id="watermarkSection">
+            <!-- Upload Zone -->
+            <div class="wm-card">
+                <div class="wm-card-title">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M2 8h8M2 12h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                    파일 선택
+                </div>
+                <div class="wm-upload-grid">
+                    <div>
+                        <div class="wm-upload-zone" id="wmPdfZone">
+                            <input type="file" id="wmPdfInput" accept=".pdf" />
+                            <div class="wm-upload-icon">📄</div>
+                            <div class="wm-upload-label">원문 PDF</div>
+                            <div class="wm-upload-hint">.pdf 파일을 드래그하거나 클릭</div>
+                            <div class="wm-file-info" id="wmPdfInfo"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="wm-upload-zone" id="wmWmZone">
+                            <input type="file" id="wmWmInput" accept=".pdf,.jpg,.jpeg,.png" />
+                            <div class="wm-upload-icon">🖼️</div>
+                            <div class="wm-upload-label">워터마크</div>
+                            <div class="wm-upload-hint">PDF, JPG, PNG 파일 지원</div>
+                            <div class="wm-file-info" id="wmWmInfo"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Options -->
+            <div class="wm-card">
+                <div class="wm-card-title">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+                    워터마크 옵션
+                </div>
+                <div class="wm-controls-grid">
+                    <div class="wm-control-group">
+                        <div class="wm-control-header">
+                            <span class="wm-control-label">불투명도</span>
+                            <span class="wm-control-value" id="wmOpacityVal">40%</span>
+                        </div>
+                        <input type="range" id="wmOpacitySlider" min="5" max="100" value="40" />
+                    </div>
+                    <div class="wm-control-group">
+                        <div class="wm-control-header">
+                            <span class="wm-control-label">크기 (페이지 대비)</span>
+                            <span class="wm-control-value" id="wmScaleVal">70%</span>
+                        </div>
+                        <input type="range" id="wmScaleSlider" min="10" max="100" value="70" />
+                    </div>
+                    <div class="wm-control-group">
+                        <span class="wm-control-label">위치</span>
+                        <select id="wmPosSelect">
+                            <option value="center">중앙</option>
+                            <option value="centerbottom">정중앙 아래</option>
+                            <option value="topleft">좌상단</option>
+                            <option value="topright">우상단</option>
+                            <option value="topcenter">상단 중앙</option>
+                            <option value="bottomleft">좌하단</option>
+                            <option value="bottomright">우하단</option>
+                            <option value="diagonal">대각선 반복</option>
+                        </select>
+                    </div>
+                    <div class="wm-control-group">
+                        <div class="wm-control-header">
+                            <span class="wm-control-label">회전 각도</span>
+                            <span class="wm-control-value" id="wmRotateVal">0°</span>
+                        </div>
+                        <input type="range" id="wmRotateSlider" min="-180" max="180" value="0" step="5" />
+                    </div>
+                    <div class="wm-control-group">
+                        <div class="wm-control-header">
+                            <span class="wm-control-label">가로 여백</span>
+                            <span class="wm-control-value" id="wmMarginXVal">0px</span>
+                        </div>
+                        <input type="range" id="wmMarginXSlider" min="-200" max="200" value="0" step="5" />
+                    </div>
+                    <div class="wm-control-group">
+                        <div class="wm-control-header">
+                            <span class="wm-control-label">세로 여백</span>
+                            <span class="wm-control-value" id="wmMarginYVal">0px</span>
+                        </div>
+                        <input type="range" id="wmMarginYSlider" min="-200" max="200" value="0" step="5" />
+                    </div>
+                </div>
+            </div>
+
+            <!-- Preview -->
+            <div class="wm-card">
+                <div class="wm-preview-header">
+                    <div class="wm-card-title" style="margin-bottom:0">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M1 8C1 8 3.5 3 8 3C12.5 3 15 8 15 8C15 8 12.5 13 8 13C3.5 13 1 8 1 8Z" stroke="currentColor" stroke-width="1.3"/><circle cx="8" cy="8" r="2.5" stroke="currentColor" stroke-width="1.3"/></svg>
+                        미리보기
+                    </div>
+                    <div class="wm-preview-controls">
+                        <div class="wm-page-nav">
+                            <button class="wm-page-btn" id="wmPrevPage" disabled>‹</button>
+                            <span id="wmPageInfo">— / —</span>
+                            <button class="wm-page-btn" id="wmNextPage" disabled>›</button>
+                        </div>
+                        <button class="btn-select wm-preview-btn" id="wmPreviewBtn">미리보기 생성</button>
+                    </div>
+                </div>
+                <div class="wm-preview-area" id="wmPreviewArea">
+                    <div class="wm-preview-placeholder" id="wmPreviewPlaceholder">
+                        파일을 업로드하고 미리보기 버튼을 눌러주세요
+                    </div>
+                </div>
+            </div>
+
+            <!-- Process & Download -->
+            <div class="wm-card">
+                <div class="wm-progress-bar" id="wmProgressBar">
+                    <div class="wm-progress-fill" id="wmProgressFill"></div>
+                </div>
+                <div class="wm-status-msg" id="wmStatusMsg">파일을 선택하면 변환을 시작할 수 있습니다</div>
+                <button class="btn-primary btn-lg wm-process-btn" id="wmProcessBtn" disabled>
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <path d="M10 3V13M6 9L10 13L14 9M4 16H16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    워터마크 삽입 후 PDF 다운로드
+                </button>
+            </div>
+        </section>
+
+        <!-- Print Conversion Section -->
+        <section class="tab-content" id="printConvSection">
+            <!-- Drop Zone -->
+            <div class="drop-zone" id="pcDropZone">
+                <div class="drop-zone-inner">
+                    <div class="drop-icon">
+                        <svg width="56" height="56" viewBox="0 0 56 56" fill="none">
+                            <circle cx="28" cy="28" r="26" stroke="url(#dropGrad4)" stroke-width="2" stroke-dasharray="6 4" opacity="0.5"/>
+                            <rect x="20" y="8" width="16" height="40" rx="3" stroke="url(#dropGrad4)" stroke-width="2"/>
+                            <line x1="24" y1="16" x2="32" y2="16" stroke="url(#dropGrad4)" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+                            <line x1="24" y1="22" x2="32" y2="22" stroke="url(#dropGrad4)" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+                            <line x1="24" y1="28" x2="32" y2="28" stroke="url(#dropGrad4)" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+                            <line x1="24" y1="34" x2="30" y2="34" stroke="url(#dropGrad4)" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+                            <defs>
+                                <linearGradient id="dropGrad4" x1="0" y1="0" x2="56" y2="56">
+                                    <stop stop-color="#3d5fa0"/>
+                                    <stop offset="1" stop-color="#7ca5ff"/>
+                                </linearGradient>
+                            </defs>
+                        </svg>
+                    </div>
+                    <p class="drop-text">긴 스크린샷 이미지를 드래그하거나</p>
+                    <button class="btn-select" id="pcSelectBtn">이미지 선택</button>
+                    <p class="drop-hint">PNG, JPG, BMP, WebP 등 이미지 파일 지원</p>
+                    <input type="file" id="pcFileInput" accept="image/*" hidden>
+                </div>
+            </div>
+
+            <!-- File info -->
+            <div class="file-info-bar hidden" id="pcFileInfo">
+                <div class="file-info-left">
+                    <div class="file-icon-sm">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <rect x="3" y="3" width="14" height="14" rx="2" fill="#7ca5ff" opacity="0.15" stroke="#7ca5ff" stroke-width="1.2"/>
+                            <circle cx="7.5" cy="7.5" r="1.5" fill="#7ca5ff" opacity="0.6"/>
+                            <path d="M3 14l4-4 3 3 2-2 5 5H3v-2z" fill="#7ca5ff" opacity="0.3"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <span class="file-info-name" id="pcFileName">—</span>
+                        <span class="file-info-meta" id="pcFileMeta">—</span>
+                    </div>
+                </div>
+                <button class="btn-icon btn-danger" id="pcRemoveFile" title="파일 제거">
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                        <path d="M5 5L13 13M13 5L5 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Options -->
+            <div class="wm-card hidden" id="pcOptionsCard">
+                <div class="wm-card-title">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+                    변환 옵션
+                </div>
+                <div class="wm-controls-grid" style="grid-template-columns: repeat(2, 1fr);">
+                    <div class="wm-control-group">
+                        <div class="wm-control-header">
+                            <span class="wm-control-label">용지 크기</span>
+                        </div>
+                        <select id="pcPaperSize" style="width:100%;padding:8px 12px;background:rgba(30,88,168,0.2);border:1px solid var(--border-medium);border-radius:var(--radius-sm);color:var(--text-primary);font-size:0.85rem;font-family:inherit;outline:none;cursor:pointer;">
+                            <option value="a4">A4 (210 × 297 mm)</option>
+                            <option value="letter">Letter (216 × 279 mm)</option>
+                            <option value="legal">Legal (216 × 356 mm)</option>
+                        </select>
+                    </div>
+                    <div class="wm-control-group">
+                        <div class="wm-control-header">
+                            <span class="wm-control-label">용지 방향</span>
+                        </div>
+                        <select id="pcOrientation" style="width:100%;padding:8px 12px;background:rgba(30,88,168,0.2);border:1px solid var(--border-medium);border-radius:var(--radius-sm);color:var(--text-primary);font-size:0.85rem;font-family:inherit;outline:none;cursor:pointer;">
+                            <option value="portrait">세로 (Portrait)</option>
+                            <option value="landscape">가로 (Landscape)</option>
+                        </select>
+                    </div>
+                    <div class="wm-control-group">
+                        <div class="wm-control-header">
+                            <span class="wm-control-label">여백</span>
+                            <span class="wm-control-value" id="pcMarginVal">10mm</span>
+                        </div>
+                        <input type="range" id="pcMarginSlider" min="0" max="30" value="10" step="1" style="width:100%;height:4px;background:var(--border-medium);border-radius:2px;outline:none;-webkit-appearance:none;cursor:pointer;" />
+                    </div>
+                    <div class="wm-control-group">
+                        <div class="wm-control-header">
+                            <span class="wm-control-label">페이지 겹침</span>
+                            <span class="wm-control-value" id="pcOverlapVal">10mm</span>
+                        </div>
+                        <input type="range" id="pcOverlapSlider" min="0" max="50" value="10" step="1" style="width:100%;height:4px;background:var(--border-medium);border-radius:2px;outline:none;-webkit-appearance:none;cursor:pointer;" />
+                    </div>
+                </div>
+            </div>
+
+            <!-- Preview -->
+            <div class="wm-card hidden" id="pcPreviewCard">
+                <div class="wm-card-title" style="margin-bottom:12px;">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M1 8C1 8 3.5 3 8 3C12.5 3 15 8 15 8C15 8 12.5 13 8 13C3.5 13 1 8 1 8Z" stroke="currentColor" stroke-width="1.3"/><circle cx="8" cy="8" r="2.5" stroke="currentColor" stroke-width="1.3"/></svg>
+                    미리보기
+                    <span class="badge" id="pcPageCount">0</span>
+                </div>
+                <div class="pc-preview-info" id="pcPreviewInfo" style="font-size:0.82rem;color:var(--text-secondary);margin-bottom:12px;"></div>
+                <div class="pages-grid" id="pcPagesGrid" style="grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+            <!-- Download -->
+            <div class="action-bar hidden" id="pcActionBar">
+                <div class="action-info">
+                    <span id="pcActionInfo">—</span>
+                </div>
+                <div class="action-btns">
+                    <button class="btn-primary btn-lg" id="pcDownloadBtn">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <path d="M10 3V13M6 9L10 13L14 9M4 16H16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <span id="pcDownloadLabel">PDF 다운로드</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer Credits -->
+        <footer class="app-footer">
+            <p>Created by <strong>Seongwon Yun(L.I.)</strong> &copy; 2026</p>
+            <p class="ai-credit">Powered by Google Antigravity</p>
+        </footer>
+    </div>
+
+    <!-- Full-size preview modal -->
+    <div class="modal-overlay hidden" id="previewModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="previewTitle">페이지 미리보기</h3>
+                <button class="btn-icon modal-close" id="previewClose">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <path d="M5 5L15 15M15 5L5 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <button class="modal-nav modal-prev" id="previewPrev">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                        <path d="M15 6L9 12L15 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+                <div class="preview-canvas-wrap" id="previewCanvasWrap">
+                    <canvas id="previewCanvas"></canvas>
+                </div>
+                <button class="modal-nav modal-next" id="previewNext">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                        <path d="M9 6L15 12L9 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-footer">
+                <span class="modal-page-info" id="previewPageInfo">1 / 1</span>
+                <div class="modal-rotation-controls">
+                    <button class="btn-icon" id="previewRotateCCW" title="반시계 90° 회전">
+                        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                            <path d="M5 8C5 5.2 7.2 3 10 3C12.8 3 15 5.2 15 8C15 10.8 12.8 13 10 13H6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                            <path d="M8 11L6 13L8 15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                    <span class="rotation-label" id="previewRotationLabel">0°</span>
+                    <button class="btn-icon" id="previewRotateCW" title="시계 90° 회전">
+                        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                            <path d="M13 8C13 5.2 10.8 3 8 3C5.2 3 3 5.2 3 8C3 10.8 5.2 13 8 13H12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                            <path d="M10 11L12 13L10 15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading overlay -->
+    <div class="loading-overlay hidden" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <p class="loading-text" id="loadingText">처리 중...</p>
+            <div class="progress-bar-wrap">
+                <div class="progress-bar" id="loadingProgress"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast notifications -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>
