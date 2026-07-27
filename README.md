@@ -7,6 +7,13 @@
 
 ---
 
+## 📥 최신 버전 즉시 다운로드 (One-Click Download)
+👉 [**💾 PDF_Toolkit_v4.0_Portable.zip 풀 패키지 압축파일 원클릭 다운로드**](https://github.com/wallofthehell/PDF-Toolkit-3.4/raw/main/PDF_Toolkit_v4.0_Portable.zip)
+
+> 💡 깃허브 사용법(Git Clone, Code 메뉴)을 잘 모르는 일반 사용자분들도 **위 링크 단 한번의 클릭으로** HWP 변환 및 모든 기능과 사용설명서가 빠짐없이 수록된 포터블 통합 ZIP 압축파일을 바로 다운로드 받으실 수 있습니다! (다운받아 압축을 푸신 후 폴더 내의 **`PDF_Toolkit_실행.bat`** 이나 톱니바퀴 아이콘 바로가기를 실행해주세요)
+
+---
+
 ## ✨ 주요 기능 및 특징 (manual.html 참조)
 
 ### 1. 📑 HWP/HWPX ➜ PDF 일괄 변환 및 합치기 [New in v4]

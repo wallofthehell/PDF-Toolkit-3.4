@@ -9,6 +9,7 @@ Thumbs.db
 ehthumbs.db
 
 # Archives & Temporary
-*.zip
 *.tmp
 *.bak
+*.zip
+!PDF_Toolkit_v4.0_Portable.zip
