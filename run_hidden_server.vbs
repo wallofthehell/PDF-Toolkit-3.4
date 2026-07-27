@@ -16,6 +16,7 @@ End If
 WshShell.Run cmd, 0, False
 
 If openBrowser Then
-    WScript.Sleep 1000
-    WshShell.Run "http://localhost:8080/", 1, False
+    WScript.Sleep 500
+    fileUrl = "file:///" & Replace(currentDir, "\", "/") & "/index.html#hwp"
+    WshShell.Run """" & fileUrl & """", 1, False
 End If

@@ -173,9 +173,11 @@ function switchTab(tab) {
     $$('.tab-btn').forEach(b => b.classList.remove('active'));
     $$('.tab-content').forEach(s => s.classList.remove('active'));
 
-    // HWP 탭 이탈 시 백그라운드 서버 자동 종료
+    // HWP 탭 이탈 시 백그라운드 서버 자동 종료 (file:// 모드일 때만 종료하여 http:로 직접 접속한 유저의 에셋 끊김 방지)
     if (prevTab === 'hwp' && tab !== 'hwp' && window.shutdownHwpServer) {
-        window.shutdownHwpServer();
+        if (window.location.protocol === 'file:') {
+            window.shutdownHwpServer();
+        }
     }
 
     if (tab === 'merge') {
@@ -2686,9 +2688,10 @@ console.log('PDF Toolkit initialized.');
     const noticeEl = $('#hwpServerOffNotice');
     const retryBtn = $('#hwpRetryConnectBtn');
     let isServerOnline = false;
-    let redirecting = false;
+    let toastShownOnce = false;
 
     function setServerBadge(online, text = null) {
+        const wasOffline = !isServerOnline;
         isServerOnline = online;
         if (!badgeEl || !statusTextEl) return;
         badgeEl.classList.remove('status-on', 'status-off');
@@ -2697,18 +2700,15 @@ console.log('PDF Toolkit initialized.');
             statusTextEl.textContent = text || '변환서버 ON';
             if (noticeEl) noticeEl.classList.add('hidden');
 
-            // file:// 프로토콜에서 실행 중 서버 ON 감지 시 http://localhost:8080/ 으로 쾌속 자동 전환!
-            if (window.location.protocol === 'file:' && !redirecting) {
-                redirecting = true;
-                showToast('🚀 로컬 서버 접속 성공! HTTP 서버 환경으로 자동 이동합니다...', 'success');
-                setTimeout(() => {
-                    window.location.href = 'http://localhost:8080/?tab=hwp';
-                }, 700);
+            if (wasOffline && !toastShownOnce && state.mode === 'hwp') {
+                toastShownOnce = true;
+                showToast('🎉 HWP 변환 로컬 엔진 연동 성공! (100% 오프라인 무소음 모드)', 'success');
             }
         } else {
             badgeEl.classList.add('status-off');
             statusTextEl.textContent = text || '변환서버 OFF (안내)';
             if (noticeEl && state.mode === 'hwp') noticeEl.classList.remove('hidden');
+            toastShownOnce = false;
         }
     }
 
