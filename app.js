@@ -168,9 +168,16 @@ function hideLoading() {
 // Tab Switching
 // ============================================
 function switchTab(tab) {
+    const prevTab = state.mode;
     state.mode = tab;
     $$('.tab-btn').forEach(b => b.classList.remove('active'));
     $$('.tab-content').forEach(s => s.classList.remove('active'));
+
+    // HWP 탭 이탈 시 백그라운드 서버 자동 종료
+    if (prevTab === 'hwp' && tab !== 'hwp' && window.shutdownHwpServer) {
+        window.shutdownHwpServer();
+    }
+
     if (tab === 'merge') {
         dom.tabMerge.classList.add('active');
         dom.mergeSection.classList.add('active');
@@ -183,6 +190,11 @@ function switchTab(tab) {
     } else if (tab === 'printconv') {
         dom.tabPrintConv.classList.add('active');
         dom.printConvSection.classList.add('active');
+    } else if (tab === 'hwp') {
+        $('#tabHwp').classList.add('active');
+        $('#hwpSection').classList.add('active');
+        // HWP 탭 진입 시 서버 상태 확인 및 자동 켜기
+        if (window.wakeHwpServer) window.wakeHwpServer();
     }
 }
 
@@ -190,6 +202,7 @@ dom.tabMerge.addEventListener('click', () => switchTab('merge'));
 dom.tabSplit.addEventListener('click', () => switchTab('split'));
 dom.tabWatermark.addEventListener('click', () => switchTab('watermark'));
 dom.tabPrintConv.addEventListener('click', () => switchTab('printconv'));
+$('#tabHwp').addEventListener('click', () => switchTab('hwp'));
 
 // ============================================
 // Drag & Drop Setup
@@ -2405,3 +2418,382 @@ console.log('PDF Toolkit initialized.');
 
     console.log('Print Conversion module initialized.');
 })();
+
+// ============================================
+// HWP to PDF Module
+// ============================================
+(() => {
+    const hState = {
+        files: [],
+        lastSelectedIdx: -1
+    };
+    let hIdCounter = 0;
+
+    const el = {
+        dropZone: $('#hwpDropZone'),
+        fileInput: $('#hwpFileInput'),
+        selectBtn: $('#hwpSelectBtn'),
+        fileList: $('#hwpFileList'),
+        fileItems: $('#hwpFileItems'),
+        fileCount: $('#hwpFileCount'),
+        addMore: $('#hwpAddMore'),
+        sortAsc: $('#hwpSortAsc'),
+        sortDesc: $('#hwpSortDesc'),
+        clearAll: $('#hwpClearAll'),
+        actionBar: $('#hwpActionBar'),
+        actionInfo: $('#hwpActionInfo'),
+        mergeBtn: $('#hwpMergeBtn'),
+        separateBtn: $('#hwpSeparateBtn'),
+    };
+
+    function renderUI() {
+        const hasFiles = hState.files.length > 0;
+        el.dropZone.classList.toggle('hidden', hasFiles);
+        el.fileList.classList.toggle('hidden', !hasFiles);
+        el.actionBar.classList.toggle('hidden', !hasFiles);
+
+        el.fileCount.textContent = hState.files.length;
+        el.actionInfo.textContent = `${hState.files.length}개 파일 대기 중`;
+
+        el.fileItems.innerHTML = '';
+        hState.files.forEach((file, index) => {
+            const item = document.createElement('div');
+            item.className = `file-item${file._selected ? ' file-selected' : ''}`;
+            item.draggable = true;
+            item.dataset.id = file.id;
+            item.innerHTML = `
+                <div class="file-drag-handle">
+                    <span></span><span></span><span></span>
+                </div>
+                <div class="file-icon-sm">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <rect x="3" y="1" width="14" height="18" rx="2" fill="#3b82f6" opacity="0.15" stroke="#3b82f6" stroke-width="1.2"/>
+                        <text x="10" y="13" text-anchor="middle" fill="#3b82f6" font-size="6" font-weight="700">HWP</text>
+                    </svg>
+                </div>
+                <div class="file-details">
+                    <div class="file-name">${file.name}</div>
+                    <div class="file-meta">${formatFileSize(file.size)}</div>
+                </div>
+                <div class="file-actions">
+                    <button class="btn-icon btn-danger" title="삭제" data-action="remove">
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 3L11 11M11 3L3 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                    </button>
+                </div>
+            `;
+
+            item.querySelector('[data-action="remove"]').addEventListener('click', (e) => {
+                e.stopPropagation();
+                hState.files = hState.files.filter(f => f.id !== file.id);
+                renderUI();
+            });
+
+            item.addEventListener('click', (e) => {
+                if (e.target.closest('[data-action]')) return;
+                if (e.shiftKey && hState.lastSelectedIdx >= 0) {
+                    const start = Math.min(hState.lastSelectedIdx, index);
+                    const end = Math.max(hState.lastSelectedIdx, index);
+                    for (let i = start; i <= end; i++) hState.files[i]._selected = true;
+                } else if (e.ctrlKey || e.metaKey) {
+                    file._selected = !file._selected;
+                } else {
+                    const was = file._selected;
+                    hState.files.forEach(f => f._selected = false);
+                    file._selected = !was;
+                }
+                hState.lastSelectedIdx = index;
+                renderUI();
+            });
+
+            item.addEventListener('dragstart', (e) => {
+                if (!file._selected) {
+                    hState.files.forEach(f => f._selected = false);
+                    file._selected = true;
+                    renderUI();
+                }
+                const selectedIds = hState.files.filter(f => f._selected).map(f => f.id);
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('application/x-hwp-files', JSON.stringify(selectedIds));
+                item.classList.add('dragging');
+            });
+            item.addEventListener('dragend', () => {
+                item.classList.remove('dragging');
+                el.fileItems.querySelectorAll('.drag-target').forEach(x => x.classList.remove('drag-target'));
+            });
+            item.addEventListener('dragover', (e) => {
+                if (e.dataTransfer.types.includes('application/x-hwp-files')) {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                    item.classList.add('drag-target');
+                }
+            });
+            item.addEventListener('dragleave', () => item.classList.remove('drag-target'));
+            item.addEventListener('drop', (e) => {
+                item.classList.remove('drag-target');
+                if (!e.dataTransfer.types.includes('application/x-hwp-files')) return;
+                e.preventDefault();
+                e.stopPropagation();
+
+                const selectedIds = JSON.parse(e.dataTransfer.getData('application/x-hwp-files'));
+                const moved = [];
+                const remaining = [];
+                hState.files.forEach(f => selectedIds.includes(f.id) ? moved.push(f) : remaining.push(f));
+                
+                let insertIdx = remaining.findIndex(f => f.id === file.id);
+                if (insertIdx === -1) insertIdx = remaining.length;
+                remaining.splice(insertIdx, 0, ...moved);
+                hState.files = remaining;
+                renderUI();
+            });
+
+            el.fileItems.appendChild(item);
+        });
+    }
+
+    function handleFiles(files) {
+        fetch('http://localhost:8080/api/keep-alive').catch(() => {});
+        files.forEach(f => {
+            hState.files.push({
+                id: ++hIdCounter,
+                name: f.name,
+                size: f.size,
+                file: f,
+                _selected: false
+            });
+        });
+        renderUI();
+        showToast(`${files.length}개 파일 추가됨`, 'success');
+    }
+
+    setupDropZone(el.dropZone, el.fileInput, handleFiles, false);
+    // override setupDropZone filter
+    el.dropZone.addEventListener('drop', (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        el.dropZone.classList.remove('drag-over');
+        const files = [...ev.dataTransfer.files].filter(f => {
+            const n = f.name.toLowerCase();
+            return n.endsWith('.hwp') || n.endsWith('.hwpx');
+        });
+        if (files.length) handleFiles(files);
+        else showToast('HWP/HWPX 파일만 지원됩니다.', 'error');
+    }, { capture: true });
+    el.fileInput.addEventListener('change', (ev) => {
+        ev.stopPropagation();
+        const files = [...el.fileInput.files].filter(f => {
+            const n = f.name.toLowerCase();
+            return n.endsWith('.hwp') || n.endsWith('.hwpx');
+        });
+        if (files.length) handleFiles(files);
+        el.fileInput.value = '';
+    }, { capture: true });
+
+    el.addMore.addEventListener('click', () => el.fileInput.click());
+    el.clearAll.addEventListener('click', () => {
+        if (!confirm('모든 HWP 파일을 목록에서 삭제하시겠습니까?')) return;
+        hState.files = [];
+        renderUI();
+    });
+
+    el.sortAsc.addEventListener('click', () => {
+        hState.files.sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+        renderUI();
+    });
+    el.sortDesc.addEventListener('click', () => {
+        hState.files.sort((a, b) => b.name.localeCompare(a.name, 'ko'));
+        renderUI();
+    });
+
+    async function convertHwp(fileObj, idx, total) {
+        updateLoading(`(${idx}/${total}) ${fileObj.name} 변환 중...`, (idx / total) * 100);
+        try {
+            const arrayBuffer = await fileObj.file.arrayBuffer();
+            const res = await fetch('http://localhost:8080/api/convert-hwp', {
+                method: 'POST',
+                headers: { 'X-File-Name': encodeURIComponent(fileObj.name) },
+                body: arrayBuffer
+            });
+            if (!res.ok) throw new Error(`서버 에러: ${res.status}`);
+            return await res.arrayBuffer();
+        } catch (err) {
+            throw new Error(`[${fileObj.name}] 변환 실패: ` + err.message);
+        }
+    }
+
+    el.separateBtn.addEventListener('click', async () => {
+        if (!hState.files.length) return;
+        showLoading('HWP 파일 변환 시작...', 0);
+        const zip = new JSZip();
+        let successCount = 0;
+        
+        for (let i = 0; i < hState.files.length; i++) {
+            const f = hState.files[i];
+            try {
+                const pdfBuffer = await convertHwp(f, i + 1, hState.files.length);
+                const pdfName = f.name.replace(/\.hwpx?$/i, '.pdf');
+                zip.file(pdfName, pdfBuffer);
+                successCount++;
+            } catch (err) {
+                console.error(err);
+                showToast(err.message, 'error');
+            }
+        }
+        
+        if (successCount > 0) {
+            updateLoading('ZIP 압축 중...', 100);
+            const content = await zip.generateAsync({ type: 'blob' });
+            saveAs(content, 'Converted_PDFs.zip');
+            showToast(`${successCount}개 파일 변환 완료!`, 'success');
+        }
+        hideLoading();
+    });
+
+    el.mergeBtn.addEventListener('click', async () => {
+        if (!hState.files.length) return;
+        showLoading('HWP 파일 변환 및 병합 시작...', 0);
+        const mergedPdf = await PDFLib.PDFDocument.create();
+        let successCount = 0;
+
+        for (let i = 0; i < hState.files.length; i++) {
+            const f = hState.files[i];
+            try {
+                const pdfBuffer = await convertHwp(f, i + 1, hState.files.length);
+                const pdfDoc = await PDFLib.PDFDocument.load(pdfBuffer);
+                const pages = await mergedPdf.copyPages(pdfDoc, pdfDoc.getPageIndices());
+                pages.forEach(p => mergedPdf.addPage(p));
+                successCount++;
+            } catch (err) {
+                console.error(err);
+                showToast(err.message, 'error');
+            }
+        }
+
+        if (successCount > 0) {
+            updateLoading('최종 PDF 생성 중...', 100);
+            const pdfBytes = await mergedPdf.save();
+            const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+            saveAs(blob, 'Merged_HWP_Converted.pdf');
+            showToast(`${successCount}개 파일 병합 완료!`, 'success');
+        }
+        hideLoading();
+    });
+
+    // ============================================
+    // HWP Background Server Controller & UI Badge
+    // ============================================
+    const badgeEl = $('#hwpServerBadge');
+    const statusTextEl = $('#hwpServerStatusText');
+    const noticeEl = $('#hwpServerOffNotice');
+    const retryBtn = $('#hwpRetryConnectBtn');
+    let isServerOnline = false;
+    let redirecting = false;
+
+    function setServerBadge(online, text = null) {
+        isServerOnline = online;
+        if (!badgeEl || !statusTextEl) return;
+        badgeEl.classList.remove('status-on', 'status-off');
+        if (online) {
+            badgeEl.classList.add('status-on');
+            statusTextEl.textContent = text || '변환서버 ON';
+            if (noticeEl) noticeEl.classList.add('hidden');
+
+            // file:// 프로토콜에서 실행 중 서버 ON 감지 시 http://localhost:8080/ 으로 쾌속 자동 전환!
+            if (window.location.protocol === 'file:' && !redirecting) {
+                redirecting = true;
+                showToast('🚀 로컬 서버 접속 성공! HTTP 서버 환경으로 자동 이동합니다...', 'success');
+                setTimeout(() => {
+                    window.location.href = 'http://localhost:8080/?tab=hwp';
+                }, 700);
+            }
+        } else {
+            badgeEl.classList.add('status-off');
+            statusTextEl.textContent = text || '변환서버 OFF (안내)';
+            if (noticeEl && state.mode === 'hwp') noticeEl.classList.remove('hidden');
+        }
+    }
+
+    async function checkServerStatus() {
+        try {
+            const res = await fetch('http://localhost:8080/api/status', { signal: AbortSignal.timeout(1200) });
+            if (res.ok) {
+                setServerBadge(true, '변환서버 ON');
+                return true;
+            }
+        } catch (e) {}
+        setServerBadge(false, '변환서버 OFF (클릭/안내)');
+        return false;
+    }
+
+    async function wakeServer() {
+        const alive = await checkServerStatus();
+        if (alive) return;
+
+        setServerBadge(false, '서버 연결 중...');
+        // Custom Protocol 호출로 숨겨진 백엔드 자동 가동 시도
+        try {
+            const iframe = document.createElement('iframe');
+            iframe.style.display = 'none';
+            iframe.src = 'pdftoolkit://start';
+            document.body.appendChild(iframe);
+            setTimeout(() => iframe.remove(), 2000);
+        } catch(e) {}
+
+        // 최대 5회 주기적 확인 (1초 간격)
+        let tries = 0;
+        const interval = setInterval(async () => {
+            tries++;
+            const ok = await checkServerStatus();
+            if (ok) {
+                clearInterval(interval);
+                showToast('🎉 한글 백그라운드 변환 서버가 준비되었습니다!', 'success');
+            } else if (tries >= 5) {
+                clearInterval(interval);
+                setServerBadge(false, '변환서버 OFF (클릭/안내)');
+            }
+        }, 1000);
+    }
+
+    function shutdownServer() {
+        if (!isServerOnline) return;
+        fetch('http://localhost:8080/api/shutdown', { method: 'POST' }).catch(() => {});
+        setServerBadge(false, '변환서버 OFF');
+    }
+
+    window.wakeHwpServer = wakeServer;
+    window.shutdownHwpServer = shutdownServer;
+
+    if (badgeEl) {
+        badgeEl.addEventListener('click', () => {
+            if (!isServerOnline) {
+                showToast('백그라운드 서버 구동을 시도합니다...', 'info');
+                wakeServer();
+            } else {
+                showToast('변환 서버가 정상 구동 중입니다.', 'success');
+                fetch('http://localhost:8080/api/keep-alive').catch(() => {});
+            }
+        });
+    }
+
+    if (retryBtn) {
+        retryBtn.addEventListener('click', () => {
+            showToast('서버 접속 상태를 확인하는 중입니다...', 'info');
+            wakeServer();
+        });
+    }
+
+    // 스마트 감지 타이머 (꺼져있을 때는 2초마다 쾌속 감지, 켜져있을 때는 10초마다 워치독 감지)
+    setInterval(() => {
+        if (state.mode === 'hwp') {
+            checkServerStatus();
+        }
+    }, isServerOnline ? 10000 : 2000);
+
+    // URL 파라미터나 해시에 hwp가 있으면 초기 탭으로 HWP 선택
+    if (window.location.search.includes('tab=hwp') || window.location.hash.includes('hwp')) {
+        setTimeout(() => switchTab('hwp'), 50);
+    } else if (state.mode === 'hwp') {
+        wakeServer();
+    }
+
+})();
+

@@ -222,13 +222,14 @@
         <!-- Header -->
         <div class="header">
             <h1>PDF Toolkit 사용 설명서</h1>
-            <p>올인원 PDF 도구 — 병합 · 분할 · 워터마크 · 프린트용 변환</p>
-            <div class="version">오프라인(Standalone) · 인터넷 연결 불필요 · 브라우저 단독 실행</div>
+            <p>올인원 PDF 도구 — HWP/HWPX 변환 · 병합 · 분할 · 워터마크 · 프린트용 변환</p>
+            <div class="version">오프라인(Standalone) · 인터넷 연결 불필요 · 무음 백그라운드 단독 실행</div>
         </div>
 
         <!-- Intro -->
         <div class="intro">
-            <strong>실행 방법:</strong> <span class="hl">index.html</span> 파일을 웹 브라우저(Chrome, Edge 등)로 열어주세요. 모든 처리는 사용자 PC 내에서 이루어지며, 파일이 서버로 전송되지 않습니다.
+            <strong>🚀 실행 방법:</strong> 폴더 내의 <span class="hl">PDF_Toolkit_실행.bat</span> 또는 <span class="hl">PDF Toolkit v4 (아이콘 실행).lnk</span>를 더블클릭해주세요! 검은 도스(Terminal) 창 없이 무음 숨김 모드로 웹앱이 시작됩니다. (일반 <span class="hl">index.html</span>을 먼저 열고 나중에 실행해도 2초 내로 서버 가동을 인식하여 쾌속 스마트 이동)<br>
+            <span style="font-size:8.8pt; color:#475569;">※ 모든 연산을 사용자 로컬 PC 내부에서 수행하며 외부 인터넷 서버로 문서가 절대 전송되지 않는 100% 독립형 오프라인 보장 시스템입니다.</span>
         </div>
 
         <!-- 2-column layout -->
@@ -327,6 +328,37 @@
                     <li><strong>결과 저장:</strong> <span class="hl">N페이지 PDF 다운로드</span> 클릭</li>
                 </ul>
                 <div class="tip">휴대전화 긴 캡처(스크롤 캡처)를 A4 용지에 맞춰 인쇄하고 싶을 때 유용합니다.</div>
+            </div>
+
+            <!-- 5. HWP to PDF -->
+            <div class="section">
+                <h2><span class="icon">5</span>HWP/HWPX ➜ PDF 변환</h2>
+                <p class="desc">한글(HWP, HWPX) 문서를 원본 레이아웃 그대로 고속 렌더링하여 PDF로 일괄 변환 및 병합합니다.</p>
+                <ul>
+                    <li><strong>지원 포맷:</strong> 한컴오피스 <span class="hl">.hwp</span>, <span class="hl">.hwpx</span> 파일 및 MS Word(<span class="hl">.doc</span>, <span class="hl">.docx</span>)</li>
+                    <li><strong>드래그 앤 드롭 변환:</strong> 한글 문서를 마우스로 드래그하여 목록에 올려놓기만 하면 실시간 변환 엔진이 PDF 파일로 저장합니다.</li>
+                    <li><strong>변환 결과 원축 합치기:</strong> 리스트 하단의 <span class="hl">변환된 PDF 합치기 & 다운로드</span> 클릭 시 개별 파일들을 한방에 1개의 합본 PDF로 만들어줍니다!</li>
+                    <li><strong>직관적 녹색/적색 표시등 UI:</strong> 
+                        <ul>
+                            <li><strong style="color:#15803d;">🟢 변환서버 ON</strong> : HWP 탭 진입 시 자동 감지되어 즉시 활성화 및 연동됩니다.</li>
+                            <li><strong style="color:#b91c1c;">🔴 변환서버 OFF</strong> : 타 탭으로 이동 시 불필요한 백그라운드 서버를 조용히 자동 종료시킵니다.</li>
+                        </ul>
+                    </li>
+                </ul>
+                <div class="tip">한컴오피스 또는 한글 뷰어 엔진을 연동하므로 표, 도형, 글꼴이 실물 문서 그대로 출력됩니다!</div>
+            </div>
+
+            <!-- 6. Smart Background Server & UI Guide -->
+            <div class="section">
+                <h2><span class="icon">6</span>스마트 서버 & 자동 전환 시스템</h2>
+                <p class="desc">사용자의 혼란을 원천 차단하는 맞춤형 제어 및 무음 자동화 기능을 탑재했습니다.</p>
+                <ul>
+                    <li><strong>검은 도스창 없는 무음 구동:</strong> <span class="hl">PDF_Toolkit_실행.bat</span> 또는 탐색기 아이콘 바로가기를 누르면 보기 안 좋은 명령 프롬프트 창 없이 백그라운드에서 상쾌하게 열립니다.</li>
+                    <li><strong>Custom Protocol 연계 (<span class="hl">pdftoolkit://</span>):</strong> 윈도우 레지스트리에 웹앱 연동 프로토콜을 등록하여 탭 전환만으로도 백엔드를 스스로 끄고 켭니다.</li>
+                    <li><strong>5분 무동작 절전 워치독(Watchdog):</strong> 300초 동안 아무 상호작용이나 변환 작업이 없으면 자원 보호를 위해 프로세스가 알아서 안전 종료됩니다.</li>
+                    <li><strong>스마트 주소 쾌속 전환 (Auto-Redirect):</strong> 사용자가 <span class="hl">index.html</span>을 일반 더블클릭(<span class="hl">file://</span>)으로 열어도 안내 카드 내의 버튼으로 실행하면, 2초 내 서버 활성화를 인지하여 진짜 로컬 웹앱 화면으로 스스로 새로고침 이동합니다.</li>
+                </ul>
+                <div class="tip">압축해서 타 PC로 옮겨 풀더라도 아이콘, 프로토콜 및 바로가기 경로가 스스로 재생성되어 완벽 작동합니다!</div>
             </div>
 
         </div>

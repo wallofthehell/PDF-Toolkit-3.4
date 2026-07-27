@@ -1624,3 +1624,213 @@ body {
         height: 16px;
     }
 }
+
+/* ========================================
+   Server Status Banner (HWP Conversion Tab)
+   ======================================== */
+.server-status-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 12px 18px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.status-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.server-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 16px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+/* 켜짐: 녹색 네모 + 흰색 글씨 */
+.server-badge.status-on {
+    background-color: #16a34a;
+    border: 1.5px solid #22c55e;
+    color: #ffffff !important;
+}
+
+.server-badge.status-on .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #ffffff;
+    box-shadow: 0 0 8px #ffffff;
+    animation: pulseDot 1.5s infinite alternate;
+}
+
+/* 꺼짐: 빨간 네모 + 검은색 글씨 */
+.server-badge.status-off {
+    background-color: #ef4444;
+    border: 1.5px solid #f87171;
+    color: #000000 !important;
+}
+
+.server-badge.status-off .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #000000;
+    opacity: 0.6;
+}
+
+@keyframes pulseDot {
+    from { transform: scale(0.9); opacity: 0.8; }
+    to { transform: scale(1.2); opacity: 1; box-shadow: 0 0 12px #ffffff; }
+}
+
+/* ========================================
+   HWP Server Guidance Notice Card
+   ======================================== */
+.hwp-guidance-card {
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.95) 100%);
+    border: 1px solid rgba(248, 113, 113, 0.4);
+    border-left: 5px solid #ef4444;
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 0 15px rgba(239, 68, 68, 0.1);
+    animation: fadeInSlideDown 0.3s ease-out;
+}
+
+@keyframes fadeInSlideDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.guidance-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 18px;
+    border-bottom: 1px solid var(--border-subtle);
+    padding-bottom: 14px;
+}
+
+.guidance-icon {
+    font-size: 2.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 50px;
+    height: 50px;
+    background: rgba(239, 68, 68, 0.15);
+    border-radius: 12px;
+}
+
+.guidance-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #f87171;
+    margin: 0 0 4px 0;
+}
+
+.guidance-subtitle {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.guidance-body {
+    margin-bottom: 20px;
+}
+
+.step-box {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    background: rgba(15, 23, 42, 0.6);
+    padding: 14px 18px;
+    border-radius: 8px;
+    border: 1px solid rgba(148, 163, 184, 0.15);
+}
+
+.step-num {
+    background: #ef4444;
+    color: #000;
+    font-size: 0.75rem;
+    font-weight: 800;
+    padding: 3px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+    margin-top: 2px;
+}
+
+.step-desc {
+    font-size: 0.95rem;
+    color: var(--text-primary);
+    line-height: 1.6;
+}
+
+.guidance-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.btn-guide-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: #ffffff !important;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.92rem;
+    padding: 10px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+    transition: all 0.2s ease;
+}
+
+.btn-guide-primary:hover {
+    background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4);
+}
+
+.btn-guide-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #e2e8f0;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    font-family: inherit;
+    font-size: 0.9rem;
+    font-weight: 500;
+    padding: 10px 18px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-guide-secondary:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+

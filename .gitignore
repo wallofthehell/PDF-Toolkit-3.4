@@ -1,0 +1,14 @@
+# Python cache & logs
+__pycache__/
+*.py[cod]
+*$py.class
+*.log
+
+# Windows temp
+Thumbs.db
+ehthumbs.db
+
+# Archives & Temporary
+*.zip
+*.tmp
+*.bak
