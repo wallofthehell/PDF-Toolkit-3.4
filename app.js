@@ -69,6 +69,7 @@ const dom = {
     mergePagesGrid: $('#mergePagesGrid'),
     mergePageCount: $('#mergePageCount'),
     mergeRotateAll: $('#mergeRotateAll'),
+    mergeRotateSelected: $('#mergeRotateSelected'),
     mergeBookmarkSection: $('#mergeBookmarkSection'),
     mergeBookmarkTree: $('#mergeBookmarkTree'),
     mergeBookmarkCount: $('#mergeBookmarkCount'),
@@ -390,13 +391,16 @@ async function handleMergeFiles(files) {
 
                 for (let p = 0; p < pdfDoc.numPages; p++) {
                     updateLoading(`${file.name} - 페이지 ${p + 1}/${pdfDoc.numPages}`, 50 + ((i * pdfDoc.numPages + p) / (files.length * pdfDoc.numPages)) * 50);
-                    const thumbCanvas = await renderPageThumb(pdfDoc, p, 0);
+                    const pdfPageObj = await pdfDoc.getPage(p + 1);
+                    const inherentRotation = pdfPageObj.rotate || 0;
+                    const thumbCanvas = await renderPageThumb(pdfDoc, p, inherentRotation);
                     state.merge.pages.push({
                         id: ++pageIdCounter,
                         fileId,
                         fileName: file.name,
                         pageIndex: p,
-                        rotation: 0,
+                        rotation: inherentRotation,
+                        initialRotation: inherentRotation,
                         thumbCanvas,
                     });
                 }
@@ -716,8 +720,10 @@ function sortFiles(direction) {
 function rebuildMergePages() {
     // Keep rotation info by fileId + pageIndex
     const rotationMap = {};
+    const initRotationMap = {};
     state.merge.pages.forEach(p => {
         rotationMap[`${p.fileId}-${p.pageIndex}`] = p.rotation;
+        initRotationMap[`${p.fileId}-${p.pageIndex}`] = p.initialRotation;
     });
 
     const newPages = [];
@@ -726,6 +732,7 @@ function rebuildMergePages() {
         filePages.sort((a, b) => a.pageIndex - b.pageIndex);
         filePages.forEach(p => {
             p.rotation = rotationMap[`${p.fileId}-${p.pageIndex}`] || 0;
+            p.initialRotation = initRotationMap[`${p.fileId}-${p.pageIndex}`] || 0;
             newPages.push(p);
         });
     });
@@ -1122,9 +1129,10 @@ async function executeMerge() {
                 const srcPdf = await PDFLib.PDFDocument.load(fileBufferMap[page.fileId]);
                 const [copiedPage] = await mergedPdf.copyPages(srcPdf, [page.pageIndex]);
 
-                if (page.rotation !== 0) {
+                const userRotation = page.rotation - (page.initialRotation || 0);
+                if (userRotation !== 0) {
                     const currentRotation = copiedPage.getRotation().angle;
-                    copiedPage.setRotation(PDFLib.degrees(currentRotation + page.rotation));
+                    copiedPage.setRotation(PDFLib.degrees(currentRotation + userRotation));
                 }
 
                 mergedPdf.addPage(copiedPage);
@@ -1172,11 +1180,14 @@ async function handleSplitFile(files) {
 
         for (let p = 0; p < pdfDoc.numPages; p++) {
             updateLoading(`페이지 ${p + 1}/${pdfDoc.numPages} 렌더링 중...`, ((p + 1) / pdfDoc.numPages) * 100);
-            const thumbCanvas = await renderPageThumb(pdfDoc, p, 0);
+            const pdfPageObj = await pdfDoc.getPage(p + 1);
+            const inherentRotation = pdfPageObj.rotate || 0;
+            const thumbCanvas = await renderPageThumb(pdfDoc, p, inherentRotation);
             state.split.pages.push({
                 id: ++pageIdCounter,
                 pageIndex: p,
-                rotation: 0,
+                rotation: inherentRotation,
+                initialRotation: inherentRotation,
                 selected: true,
                 thumbCanvas,
             });
@@ -1278,9 +1289,10 @@ async function executeSplit() {
             const srcPdf = await PDFLib.PDFDocument.load(state.split.file.arrayBuffer);
             const newPdf = await PDFLib.PDFDocument.create();
             const [copiedPage] = await newPdf.copyPages(srcPdf, [page.pageIndex]);
-            if (page.rotation !== 0) {
+            const userRotation1 = page.rotation - (page.initialRotation || 0);
+            if (userRotation1 !== 0) {
                 const cur = copiedPage.getRotation().angle;
-                copiedPage.setRotation(PDFLib.degrees(cur + page.rotation));
+                copiedPage.setRotation(PDFLib.degrees(cur + userRotation1));
             }
             newPdf.addPage(copiedPage);
             const pdfBytes = await newPdf.save();
@@ -1298,9 +1310,10 @@ async function executeSplit() {
                 updateLoading(`페이지 ${i + 1}/${selectedPages.length}`, ((i + 1) / selectedPages.length) * 100);
                 const newPdf = await PDFLib.PDFDocument.create();
                 const [copiedPage] = await newPdf.copyPages(srcPdf, [page.pageIndex]);
-                if (page.rotation !== 0) {
+                const userRotation2 = page.rotation - (page.initialRotation || 0);
+                if (userRotation2 !== 0) {
                     const cur = copiedPage.getRotation().angle;
-                    copiedPage.setRotation(PDFLib.degrees(cur + page.rotation));
+                    copiedPage.setRotation(PDFLib.degrees(cur + userRotation2));
                 }
                 newPdf.addPage(copiedPage);
                 const pdfBytes = await newPdf.save();
@@ -1375,9 +1388,10 @@ async function executeSplitMerge() {
             const page = selectedPages[i];
             updateLoading(`페이지 ${i + 1}/${selectedPages.length}`, ((i + 1) / selectedPages.length) * 100);
             const [copiedPage] = await newPdf.copyPages(srcPdf, [page.pageIndex]);
-            if (page.rotation !== 0) {
+            const userRotation3 = page.rotation - (page.initialRotation || 0);
+            if (userRotation3 !== 0) {
                 const cur = copiedPage.getRotation().angle;
-                copiedPage.setRotation(PDFLib.degrees(cur + page.rotation));
+                copiedPage.setRotation(PDFLib.degrees(cur + userRotation3));
             }
             newPdf.addPage(copiedPage);
         }
@@ -1564,6 +1578,33 @@ dom.mergeClearAll.addEventListener('click', () => {
     renderMergeUI();
     dom.mergeDropZone.classList.remove('hidden');
     showToast('전체 파일이 제거되었습니다.', 'info');
+});
+dom.mergeRotateSelected.addEventListener('click', async () => {
+    const selectedPages = state.merge.pages.filter(p => p._selected);
+    if (selectedPages.length === 0) {
+        showToast('회전할 페이지를 Ctrl+클릭으로 선택해주세요.', 'error');
+        return;
+    }
+    showLoading('선택 페이지 회전 중...');
+    for (let i = 0; i < selectedPages.length; i++) {
+        const page = selectedPages[i];
+        page.rotation = (page.rotation + 90) % 360;
+        updateLoading(`${i + 1}/${selectedPages.length}`, ((i + 1) / selectedPages.length) * 100);
+        try {
+            const file = state.merge.files.find(f => f.id === page.fileId);
+            if (file.type === 'image') {
+                const img = await loadImage(file.arrayBuffer, file.mimeType);
+                page.thumbCanvas = renderImageThumb(img, page.rotation);
+            } else {
+                const pdfDoc = await pdfjsLib.getDocument({ data: file.arrayBuffer.slice(0) }).promise;
+                page.thumbCanvas = await renderPageThumb(pdfDoc, page.pageIndex, page.rotation);
+                pdfDoc.destroy();
+            }
+        } catch (err) { /* skip */ }
+    }
+    renderMergePagesGrid();
+    hideLoading();
+    showToast(`${selectedPages.length}개 페이지가 90° 회전되었습니다.`, 'success');
 });
 dom.mergeRotateAll.addEventListener('click', async () => {
     if (state.merge.pages.length === 0) return;
