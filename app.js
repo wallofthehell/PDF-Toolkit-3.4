@@ -2892,16 +2892,81 @@ console.log('PDF Toolkit initialized.');
         saveBtn:        $('#rdSaveBtn')
     };
 
-    // ---- PII Regex Patterns ----
-    const patterns = {
-        ssn:      { regex: /\d{6}\s?[-–]\s?[1-4]\d{6}/g,                         label: '주민등록번호' },
-        phone:    { regex: /01[016789][-.\s]?\d{3,4}[-.\s]?\d{4}/g,              label: '휴대전화번호' },
-        email:    { regex: /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g, label: '이메일' },
-        card:     { regex: /\d{4}[-.\s]?\d{4}[-.\s]?\d{4}[-.\s]?\d{4}/g,         label: '카드번호' },
-        account:  { regex: /\d{2,6}[-]\d{2,8}[-]\d{1,6}([-]\d{1,3})?/g,          label: '계좌번호' },
-        passport: { regex: /[A-Z][A-Z0-9]\d{7}/g,                                label: '여권번호' },
-        license:  { regex: /\d{2}[-]\d{2}[-]\d{6}[-]\d{2}/g,                     label: '운전면허번호' }
-    };
+    // ---- Checksum Validators ----
+    function validateKoreanRRN(raw) {
+        const digits = raw.replace(/[-\s–]/g, '');
+        if (digits.length !== 13) return false;
+        // 월·일 범위 검증
+        const mm = parseInt(digits.substring(2, 4), 10);
+        const dd = parseInt(digits.substring(4, 6), 10);
+        if (mm < 1 || mm > 12 || dd < 1 || dd > 31) return false;
+        // 가중치 체크섬
+        const weights = [2, 3, 4, 5, 6, 7, 8, 9, 2, 3, 4, 5];
+        let sum = 0;
+        for (let i = 0; i < 12; i++) sum += parseInt(digits[i], 10) * weights[i];
+        const check = (11 - (sum % 11)) % 10;
+        return check === parseInt(digits[12], 10);
+    }
+
+    function validateLuhn(raw) {
+        const digits = raw.replace(/[-\s]/g, '');
+        if (digits.length < 13 || digits.length > 19) return false;
+        let sum = 0;
+        let alt = false;
+        for (let i = digits.length - 1; i >= 0; i--) {
+            let n = parseInt(digits[i], 10);
+            if (isNaN(n)) return false;
+            if (alt) { n *= 2; if (n > 9) n -= 9; }
+            sum += n;
+            alt = !alt;
+        }
+        return sum % 10 === 0;
+    }
+
+    // ---- PII Rules (22 rules, 10 groups) ----
+    // Each rule: { id, regex, label, group, validate? }
+    // validate: optional function(matchStr) => bool; if returns false, skip the match
+    const rules = [
+        // ── 신분증·식별번호 ──
+        { id: 'R65',  group: 'rrn',      label: '주민등록번호',       regex: /(?<!\d)\d{6}[-\s]?[1-4]\d{6}(?!\d)/g,    validate: validateKoreanRRN },
+        { id: 'R66',  group: 'rrn',      label: '외국인등록번호',      regex: /(?<!\d)\d{6}[-\s]?[5-8]\d{6}(?!\d)/g,    validate: validateKoreanRRN },
+        { id: 'R68',  group: 'passport', label: '여권번호',          regex: /(?<![A-Z0-9])[A-Z]\d{8}(?![A-Z0-9])/g },
+        { id: 'R69',  group: 'passport', label: '여권번호(키워드)',    regex: /(?:여권번호|여권\s*No\.?|passport\s*(?:no\.?|number)?)\s*[:=]?\s*[A-Z0-9]{6,12}/gi },
+        { id: 'R70',  group: 'license',  label: '운전면허번호',       regex: /(?<!\d)\d{2}[-\s]?\d{2}[-\s]?\d{6}[-\s]?\d{2}(?!\d)/g },
+
+        // ── 연락처 ──
+        { id: 'R71',  group: 'phone', label: '휴대전화번호',         regex: /(?<!\d)01[016789][-\s]?\d{3,4}[-\s]?\d{4}(?!\d)/g },
+        { id: 'R73',  group: 'phone', label: '서울 유선전화',        regex: /(?<!\d)02[-\s]?\d{3,4}[-\s]?\d{4}(?!\d)/g },
+        { id: 'R74',  group: 'phone', label: '지역번호 유선전화',     regex: /(?<!\d)0(?:3[1-3]|4[1-4]|5[1-5]|6[1-4])[-\s]?\d{3,4}[-\s]?\d{4}(?!\d)/g },
+        { id: 'R75',  group: 'phone', label: '인터넷전화(070)',      regex: /(?<!\d)070[-\s]?\d{3,4}[-\s]?\d{4}(?!\d)/g },
+        { id: 'R76',  group: 'phone', label: '국제형 전화번호',       regex: /(?<!\d)(?:\+82|0082)[-\s]?(?:0?1[016789]|0?2|0?[3-6][1-5]|0?70|0?50[2-8]?)[-\s]?\d{3,4}[-\s]?\d{4}(?!\d)/g },
+        { id: 'R77',  group: 'phone', label: '전화번호(키워드)',      regex: /(?:전화|전화번호|연락처|휴대폰|핸드폰|mobile|phone|tel)\s*[:=]?\s*(?:\+82[-\s]?)?0?\d{1,2}[-\s]?\d{3,4}[-\s]?\d{4}/gi },
+        { id: 'R78',  group: 'phone', label: 'E.164 국제번호',      regex: /(?<!\d)\+[1-9]\d{7,14}(?!\d)/g },
+        { id: 'R79',  group: 'email', label: '이메일',              regex: /(?<![A-Za-z0-9._%+\-])[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,63}(?![A-Za-z0-9._%+\-])/g },
+        { id: 'R80',  group: 'email', label: '이메일(키워드)',        regex: /(?:이메일|메일|email|e-mail|mail)\s*[:=]?\s*[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,63}/gi },
+
+        // ── 인적사항 ──
+        { id: 'R82',  group: 'person', label: '한국 이름(키워드)',     regex: /(?:성\s*명|이름|고객명|회원명|예금주|수취인|보호자|담당자|신청인)\s*[:=]\s*[가-힣]{2,5}/g },
+        { id: 'R83',  group: 'person', label: '영문 이름(키워드)',     regex: /(?:name|full\s*name|first\s*name|last\s*name)\s*[:=]\s*[A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3}/gi },
+
+        // ── 주소 ──
+        { id: 'R88',  group: 'address', label: '주소(키워드)',        regex: /(?:주소|거주지|배송지|수령지|address)\s*[:=]\s*(?=[^\n\r]{5,120}(?:로|길|동|읍|면|리|아파트|빌라|오피스텔|호))[^\n\r,;]{5,120}/gi },
+        { id: 'R89',  group: 'address', label: '도로명주소',         regex: /(?:서울특별시|서울시|부산광역시|부산시|대구광역시|대구시|인천광역시|인천시|광주광역시|광주시|대전광역시|대전시|울산광역시|울산시|세종특별자치시|세종시|경기도|강원도|충청북도|충북|충청남도|충남|전라북도|전북|전라남도|전남|경상북도|경북|경상남도|경남|제주특별자치도|제주도)\s+[가-힣0-9\s]+(?:대로|로|길)\s*\d+(?:-\d+)?/g },
+        { id: 'R90',  group: 'address', label: '상세주소(동호)',      regex: /\d{1,4}\s*동\s*\d{1,4}\s*호/g },
+
+        // ── 금융 ──
+        { id: 'R92',  group: 'card',    label: '카드번호',           regex: /(?<!\d)(?:\d[ \-]?){13,19}(?!\d)/g,       validate: validateLuhn },
+        { id: 'R95',  group: 'account', label: '계좌번호(키워드)',     regex: /(?:계좌번호|계좌|입금계좌|출금계좌|환불계좌|account|acct)\s*[:=]?\s*(?:\d{2,6}[-\s]){1,4}\d{2,8}/gi },
+        { id: 'R96',  group: 'account', label: '계좌번호(은행명)',     regex: /(?:국민|신한|우리|하나|농협|기업|카카오뱅크|케이뱅크|토스뱅크|SC제일|씨티|수협|신협|새마을금고|우체국|부산|대구|경남|광주|전북|제주)\s*(?:은행)?\s*(?:\d{2,6}[-\s]){1,4}\d{2,8}/g },
+
+        // ── 의료 ──
+        { id: 'R112', group: 'health',  label: '건강보험번호',        regex: /(?:건강보험증?\s*번호|건강보험\s*번호|의료보험증?\s*번호|의료보험\s*번호|보험증\s*번호)\s*[:=]?\s*(\d{11})(?![A-Za-z0-9])/g }
+    ];
+
+    // group → [rules] 매핑 (체크박스 value 기준)
+    function getRulesByGroups(groups) {
+        return rules.filter(r => groups.includes(r.group));
+    }
 
     // ============== File Load ==============
     async function loadRedactFile(file) {
@@ -2991,7 +3056,6 @@ console.log('PDF Toolkit initialized.');
             div.style.pointerEvents = 'auto';
             div.title = mask.label;
 
-            // 삭제 버튼 (호버 시 표시)
             const del = document.createElement('div');
             del.className = 'rd-mask-delete';
             del.textContent = '×';
@@ -3021,6 +3085,7 @@ console.log('PDF Toolkit initialized.');
         const cats = Array.from(rdDom.categoryChecks).filter(c => c.checked).map(c => c.value);
         if (!cats.length) { showToast('검출할 항목을 선택해주세요.', 'warning'); return; }
 
+        const activeRules = getRulesByGroups(cats);
         showLoading('개인정보 자동 검출 중...');
         let foundCount = 0;
 
@@ -3030,43 +3095,59 @@ console.log('PDF Toolkit initialized.');
             const viewport = page.getViewport({ scale: rdState.renderScale });
             const textContent = await page.getTextContent();
 
+            // 페이지의 전체 텍스트를 하나로 결합 (키워드 기반 패턴이 item 경계를 넘을 수 있으므로)
+            // 동시에 각 문자의 좌표를 추적하는 charMap 구축
+            let fullText = '';
+            const charMap = []; // charMap[charIndex] = { tx, ty, fontSize, charW }
+
             textContent.items.forEach(item => {
-                if (!item.str || !item.str.trim()) return;
-                cats.forEach(cat => {
-                    const pat = patterns[cat];
-                    if (!pat) return;
-                    // 매번 새 regex를 생성하여 lastIndex 문제 회피
-                    const rx = new RegExp(pat.regex.source, pat.regex.flags);
-                    let m;
-                    while ((m = rx.exec(item.str)) !== null) {
-                        // item.width는 전체 문자열의 렌더 폭 (PDF units)
-                        const strW = item.width || 0;
-                        const charW = item.str.length > 0 ? strW / item.str.length : 0;
-                        const matchXOff = m.index * charW;
-                        const matchW   = m[0].length * charW;
+                if (!item.str) return;
+                const strW = item.width || 0;
+                const charW = item.str.length > 0 ? strW / item.str.length : 0;
+                const tx = item.transform[4];
+                const ty = item.transform[5];
+                const fontSize = Math.abs(item.transform[0]);
 
-                        // transform: [scaleX, skewY, skewX, scaleY, tx, ty]
-                        const tx = item.transform[4];
-                        const ty = item.transform[5];
-                        const fontSize = Math.abs(item.transform[0]); // approx
+                for (let ci = 0; ci < item.str.length; ci++) {
+                    charMap.push({ tx: tx + ci * charW, ty, fontSize, charW });
+                }
+                fullText += item.str;
+            });
 
-                        const S = rdState.renderScale;
-                        const xPx = (tx + matchXOff) * S;
-                        const yPx = viewport.height - (ty * S) - (fontSize * S);
-                        const wPx = matchW * S;
-                        const hPx = fontSize * S + 4; // 약간 여유
+            // 각 룰 적용
+            activeRules.forEach(rule => {
+                const rx = new RegExp(rule.regex.source, rule.regex.flags);
+                let m;
+                while ((m = rx.exec(fullText)) !== null) {
+                    const matchStr = m[0];
 
-                        rdState.masks.push({
-                            id: `m_${++rdState.maskIdCounter}`,
-                            type: 'auto',
-                            page: p,
-                            rect: { x: xPx, y: yPx, w: wPx, h: hPx },
-                            label: pat.label,
-                            originalText: m[0]
-                        });
-                        foundCount++;
-                    }
-                });
+                    // 체크섬 검증이 필요한 룰: 실패 시 건너뛰기
+                    if (rule.validate && !rule.validate(matchStr)) continue;
+
+                    // 매치된 범위의 좌표 계산
+                    const startIdx = m.index;
+                    const endIdx = m.index + matchStr.length - 1;
+                    if (startIdx >= charMap.length) continue;
+
+                    const startChar = charMap[startIdx];
+                    const endChar = charMap[Math.min(endIdx, charMap.length - 1)];
+
+                    const S = rdState.renderScale;
+                    const xPx = startChar.tx * S;
+                    const yPx = viewport.height - (startChar.ty * S) - (startChar.fontSize * S);
+                    const wPx = ((endChar.tx + endChar.charW) - startChar.tx) * S;
+                    const hPx = startChar.fontSize * S + 4;
+
+                    rdState.masks.push({
+                        id: `m_${++rdState.maskIdCounter}`,
+                        type: 'auto',
+                        page: p,
+                        rect: { x: xPx, y: yPx, w: Math.max(wPx, 20), h: hPx },
+                        label: rule.label,
+                        originalText: matchStr.length > 40 ? matchStr.substring(0, 37) + '…' : matchStr
+                    });
+                    foundCount++;
+                }
             });
         }
 
