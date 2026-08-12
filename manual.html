@@ -356,9 +356,24 @@
                 <div class="tip">한컴오피스 또는 한글 뷰어 엔진을 연동하므로 표, 도형, 글꼴이 실물 문서 그대로 출력됩니다!</div>
             </div>
 
-            <!-- 6. Smart Background Server & UI Guide -->
+            <!-- 6. Redact (Privacy / De-identification) -->
             <div class="section">
-                <h2><span class="icon">6</span>스마트 서버 & 자동 전환 시스템</h2>
+                <h2><span class="icon">6</span>개인정보 보호 (비식별화)</h2>
+                <p class="desc">PDF 문서 내 개인정보를 자동 검출하고 복원 불가능하게 마스킹합니다.</p>
+                <ul>
+                    <li><strong>파일 업로드:</strong> 비식별화할 PDF 파일 1개를 드래그 앤 드롭 또는 클릭으로 업로드</li>
+                    <li><strong>자동 검출:</strong> 주민등록번호, 전화번호, 이메일, 카드번호, 계좌번호, 여권번호, 운전면허번호 등 7종의 개인정보 패턴을 정규식으로 자동 탐지</li>
+                    <li><strong>마스킹 표시:</strong> 검출된 항목을 검은색 또는 흰색 박스로 표시 (자동 검출: <code>빨간 실선</code> 테두리, 수동 마스킹: <code>점선</code> 테두리)</li>
+                    <li><strong>수동 마스킹:</strong> 도구 모음에서 <span class="hl">수동 마스킹</span>을 선택한 후 마우스 드래그로 직접 영역을 지정하여 마스킹 추가</li>
+                    <li><strong>마스킹 해제:</strong> 잘못 검출된 항목은 마스킹 박스 위의 <code>×</code> 버튼 또는 우측 목록의 삭제 버튼으로 개별 삭제 가능</li>
+                    <li><strong>안전한 저장:</strong> 이미지 플래튼(Flatten) 방식으로 재결합하여 원본 텍스트 완전 삭제 보장 (150/200/300 DPI 선택 가능)</li>
+                </ul>
+                <div class="tip">저장된 PDF는 이미지 기반이므로 마스킹된 영역 안의 원본 데이터를 어떤 복원 도구로도 살려낼 수 없습니다. 철통 보안!</div>
+            </div>
+
+            <!-- 7. Smart Background Server & UI Guide -->
+            <div class="section">
+                <h2><span class="icon">7</span>스마트 서버 & 자동 전환 시스템</h2>
                 <p class="desc">사용자의 혼란을 원천 차단하는 맞춤형 제어 및 무음 자동화 기능을 탑재했습니다.</p>
                 <ul>
                     <li><strong>검은 도스창 없는 무음 구동:</strong> <span class="hl">PDF_Toolkit_실행.bat</span> 또는 탐색기 아이콘 바로가기를 누르면 보기 안 좋은 명령 프롬프트 창 없이 백그라운드에서 상쾌하게 열립니다.</li>

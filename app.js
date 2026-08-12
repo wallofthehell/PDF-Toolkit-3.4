@@ -198,6 +198,9 @@ function switchTab(tab) {
         $('#hwpSection').classList.add('active');
         // HWP 탭 진입 시 서버 상태 확인 및 자동 켜기
         if (window.wakeHwpServer) window.wakeHwpServer();
+    } else if (tab === 'redact') {
+        $('#tabRedact').classList.add('active');
+        $('#redactSection').classList.add('active');
     }
 }
 
@@ -206,6 +209,7 @@ dom.tabSplit.addEventListener('click', () => switchTab('split'));
 dom.tabWatermark.addEventListener('click', () => switchTab('watermark'));
 dom.tabPrintConv.addEventListener('click', () => switchTab('printconv'));
 $('#tabHwp').addEventListener('click', () => switchTab('hwp'));
+$('#tabRedact').addEventListener('click', () => switchTab('redact'));
 
 // ============================================
 // Drag & Drop Setup
@@ -2836,5 +2840,424 @@ console.log('PDF Toolkit initialized.');
         wakeServer();
     }
 
+})();
+
+// ============================================
+// Redact (개인정보 보호 / 비식별화) Module
+// ============================================
+(function initRedact() {
+    'use strict';
+
+    // ---- Private State ----
+    const rdState = {
+        file: null,           // { name, arrayBuffer }
+        pdfDoc: null,         // pdfjsLib document
+        numPages: 0,
+        currentPage: 1,
+        masks: [],            // { id, type:'auto'|'manual', page, rect:{x,y,w,h}, label, originalText }
+        maskColor: 'black',
+        mode: 'select',       // 'select' | 'draw'
+        maskIdCounter: 0,
+        drawing: false,
+        drawStart: { x: 0, y: 0 },
+        renderScale: 1.5      // 화면 프리뷰용 스케일
+    };
+
+    // ---- DOM Cache ----
+    const rdDom = {
+        dropZone:       $('#rdDropZone'),
+        fileInput:      $('#rdFileInput'),
+        workspace:      $('#rdWorkspace'),
+        fileName:       $('#rdFileName'),
+        filePages:      $('#rdFilePages'),
+        clearBtn:       $('#rdClearBtn'),
+        colorRadios:    $$('input[name="rdColor"]'),
+        detectBtn:      $('#rdDetectBtn'),
+        categoryChecks: $$('#rdCategoryChecks input[type="checkbox"]'),
+        prevPageBtn:    $('#rdPrevPage'),
+        nextPageBtn:    $('#rdNextPage'),
+        pageInfo:       $('#rdPageInfo'),
+        modeSelectBtn:  $('#rdModeSelect'),
+        modeDrawBtn:    $('#rdModeDraw'),
+        canvasWrap:     $('#rdCanvasWrap'),
+        canvasInner:    $('#rdCanvasInner'),
+        canvasBase:     $('#rdCanvasBase'),
+        maskLayer:      $('#rdMaskLayer'),
+        maskCount:      $('#rdMaskCount'),
+        resultList:     $('#rdResultList'),
+        actionBar:      $('#rdActionBar'),
+        actionTitle:    $('#rdActionTitle'),
+        actionDesc:     $('#rdActionDesc'),
+        saveDpi:        $('#rdSaveDpi'),
+        saveBtn:        $('#rdSaveBtn')
+    };
+
+    // ---- PII Regex Patterns ----
+    const patterns = {
+        ssn:      { regex: /\d{6}\s?[-–]\s?[1-4]\d{6}/g,                         label: '주민등록번호' },
+        phone:    { regex: /01[016789][-.\s]?\d{3,4}[-.\s]?\d{4}/g,              label: '휴대전화번호' },
+        email:    { regex: /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g, label: '이메일' },
+        card:     { regex: /\d{4}[-.\s]?\d{4}[-.\s]?\d{4}[-.\s]?\d{4}/g,         label: '카드번호' },
+        account:  { regex: /\d{2,6}[-]\d{2,8}[-]\d{1,6}([-]\d{1,3})?/g,          label: '계좌번호' },
+        passport: { regex: /[A-Z][A-Z0-9]\d{7}/g,                                label: '여권번호' },
+        license:  { regex: /\d{2}[-]\d{2}[-]\d{6}[-]\d{2}/g,                     label: '운전면허번호' }
+    };
+
+    // ============== File Load ==============
+    async function loadRedactFile(file) {
+        if (!file || file.type !== 'application/pdf') {
+            showToast('PDF 파일만 지원됩니다.', 'error');
+            return;
+        }
+        showLoading('PDF 불러오는 중...');
+        try {
+            const arrayBuffer = await file.arrayBuffer();
+            rdState.file = { name: file.name, arrayBuffer };
+            rdState.pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer.slice(0) }).promise;
+            rdState.numPages = rdState.pdfDoc.numPages;
+            rdState.currentPage = 1;
+            rdState.masks = [];
+            rdState.maskIdCounter = 0;
+
+            rdDom.fileName.textContent = file.name;
+            rdDom.filePages.textContent = `${rdState.numPages} 페이지`;
+
+            rdDom.dropZone.classList.add('hidden');
+            rdDom.workspace.classList.remove('hidden');
+
+            await renderPage(rdState.currentPage);
+            updateResultUI();
+            hideLoading();
+        } catch (err) {
+            hideLoading();
+            showToast('PDF 파일을 읽을 수 없습니다.', 'error');
+            console.error('[Redact] loadRedactFile error:', err);
+        }
+    }
+
+    // Drop zone & file input wiring
+    setupDropZone(rdDom.dropZone, rdDom.fileInput, files => loadRedactFile(files[0]), false);
+
+    // Clear button
+    rdDom.clearBtn.addEventListener('click', () => {
+        rdState.file = null;
+        if (rdState.pdfDoc) { rdState.pdfDoc.destroy(); rdState.pdfDoc = null; }
+        rdState.masks = [];
+        rdState.maskIdCounter = 0;
+        rdDom.dropZone.classList.remove('hidden');
+        rdDom.workspace.classList.add('hidden');
+    });
+
+    // ============== Page Render ==============
+    async function renderPage(pageNum) {
+        if (!rdState.pdfDoc) return;
+        rdDom.pageInfo.textContent = `${pageNum} / ${rdState.numPages}`;
+
+        const page = await rdState.pdfDoc.getPage(pageNum);
+        const viewport = page.getViewport({ scale: rdState.renderScale });
+
+        rdDom.canvasBase.width = viewport.width;
+        rdDom.canvasBase.height = viewport.height;
+        rdDom.canvasInner.style.width = `${viewport.width}px`;
+        rdDom.canvasInner.style.height = `${viewport.height}px`;
+
+        const ctx = rdDom.canvasBase.getContext('2d');
+        await page.render({ canvasContext: ctx, viewport }).promise;
+
+        renderMasks();
+    }
+
+    // Page navigation
+    rdDom.prevPageBtn.addEventListener('click', () => {
+        if (rdState.currentPage > 1) { rdState.currentPage--; renderPage(rdState.currentPage); }
+    });
+    rdDom.nextPageBtn.addEventListener('click', () => {
+        if (rdState.currentPage < rdState.numPages) { rdState.currentPage++; renderPage(rdState.currentPage); }
+    });
+
+    // ============== Mask Overlay Render ==============
+    function renderMasks() {
+        rdDom.maskLayer.innerHTML = '';
+        const pageMasks = rdState.masks.filter(m => m.page === rdState.currentPage);
+
+        pageMasks.forEach(mask => {
+            const div = document.createElement('div');
+            div.className = `rd-mask-box ${mask.type}`;
+            div.style.left   = `${mask.rect.x}px`;
+            div.style.top    = `${mask.rect.y}px`;
+            div.style.width  = `${mask.rect.w}px`;
+            div.style.height = `${mask.rect.h}px`;
+            div.style.backgroundColor = rdState.maskColor === 'black' ? '#000' : '#fff';
+            div.style.pointerEvents = 'auto';
+            div.title = mask.label;
+
+            // 삭제 버튼 (호버 시 표시)
+            const del = document.createElement('div');
+            del.className = 'rd-mask-delete';
+            del.textContent = '×';
+            del.addEventListener('click', e => { e.stopPropagation(); removeMask(mask.id); });
+            div.appendChild(del);
+            rdDom.maskLayer.appendChild(div);
+        });
+    }
+
+    function removeMask(id) {
+        rdState.masks = rdState.masks.filter(m => m.id !== id);
+        renderMasks();
+        updateResultUI();
+    }
+
+    // ============== Mask Color Toggle ==============
+    rdDom.colorRadios.forEach(radio => {
+        radio.addEventListener('change', e => {
+            rdState.maskColor = e.target.value;
+            renderMasks();
+        });
+    });
+
+    // ============== Auto-Detection ==============
+    rdDom.detectBtn.addEventListener('click', async () => {
+        if (!rdState.pdfDoc) return;
+        const cats = Array.from(rdDom.categoryChecks).filter(c => c.checked).map(c => c.value);
+        if (!cats.length) { showToast('검출할 항목을 선택해주세요.', 'warning'); return; }
+
+        showLoading('개인정보 자동 검출 중...');
+        let foundCount = 0;
+
+        for (let p = 1; p <= rdState.numPages; p++) {
+            updateLoading(`페이지 ${p}/${rdState.numPages} 검출 중...`, (p / rdState.numPages) * 100);
+            const page = await rdState.pdfDoc.getPage(p);
+            const viewport = page.getViewport({ scale: rdState.renderScale });
+            const textContent = await page.getTextContent();
+
+            textContent.items.forEach(item => {
+                if (!item.str || !item.str.trim()) return;
+                cats.forEach(cat => {
+                    const pat = patterns[cat];
+                    if (!pat) return;
+                    // 매번 새 regex를 생성하여 lastIndex 문제 회피
+                    const rx = new RegExp(pat.regex.source, pat.regex.flags);
+                    let m;
+                    while ((m = rx.exec(item.str)) !== null) {
+                        // item.width는 전체 문자열의 렌더 폭 (PDF units)
+                        const strW = item.width || 0;
+                        const charW = item.str.length > 0 ? strW / item.str.length : 0;
+                        const matchXOff = m.index * charW;
+                        const matchW   = m[0].length * charW;
+
+                        // transform: [scaleX, skewY, skewX, scaleY, tx, ty]
+                        const tx = item.transform[4];
+                        const ty = item.transform[5];
+                        const fontSize = Math.abs(item.transform[0]); // approx
+
+                        const S = rdState.renderScale;
+                        const xPx = (tx + matchXOff) * S;
+                        const yPx = viewport.height - (ty * S) - (fontSize * S);
+                        const wPx = matchW * S;
+                        const hPx = fontSize * S + 4; // 약간 여유
+
+                        rdState.masks.push({
+                            id: `m_${++rdState.maskIdCounter}`,
+                            type: 'auto',
+                            page: p,
+                            rect: { x: xPx, y: yPx, w: wPx, h: hPx },
+                            label: pat.label,
+                            originalText: m[0]
+                        });
+                        foundCount++;
+                    }
+                });
+            });
+        }
+
+        // 현재 페이지 마스크 갱신
+        renderMasks();
+        updateResultUI();
+        hideLoading();
+        showToast(`총 ${foundCount}건의 개인정보가 자동 검출되었습니다.`, foundCount > 0 ? 'success' : 'info');
+    });
+
+    // ============== Manual Drawing ==============
+    function setMode(mode) {
+        rdState.mode = mode;
+        rdDom.modeSelectBtn.classList.toggle('active', mode === 'select');
+        rdDom.modeDrawBtn.classList.toggle('active', mode === 'draw');
+        rdDom.canvasWrap.classList.toggle('drawing', mode === 'draw');
+    }
+    rdDom.modeSelectBtn.addEventListener('click', () => setMode('select'));
+    rdDom.modeDrawBtn.addEventListener('click', () => setMode('draw'));
+
+    let drawingBox = null;
+
+    rdDom.canvasInner.addEventListener('mousedown', e => {
+        if (rdState.mode !== 'draw') return;
+        const rect = rdDom.canvasInner.getBoundingClientRect();
+        rdState.drawing = true;
+        rdState.drawStart = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+
+        drawingBox = document.createElement('div');
+        drawingBox.id = 'rdDrawingBox';
+        drawingBox.style.left   = `${rdState.drawStart.x}px`;
+        drawingBox.style.top    = `${rdState.drawStart.y}px`;
+        drawingBox.style.width  = '0px';
+        drawingBox.style.height = '0px';
+        rdDom.maskLayer.appendChild(drawingBox);
+    });
+
+    rdDom.canvasInner.addEventListener('mousemove', e => {
+        if (!rdState.drawing || !drawingBox) return;
+        const rect = rdDom.canvasInner.getBoundingClientRect();
+        const curX = e.clientX - rect.left;
+        const curY = e.clientY - rect.top;
+
+        const x = Math.min(curX, rdState.drawStart.x);
+        const y = Math.min(curY, rdState.drawStart.y);
+        const w = Math.abs(curX - rdState.drawStart.x);
+        const h = Math.abs(curY - rdState.drawStart.y);
+
+        drawingBox.style.left   = `${x}px`;
+        drawingBox.style.top    = `${y}px`;
+        drawingBox.style.width  = `${w}px`;
+        drawingBox.style.height = `${h}px`;
+    });
+
+    rdDom.canvasInner.addEventListener('mouseup', () => {
+        if (!rdState.drawing) return;
+        rdState.drawing = false;
+
+        if (drawingBox) {
+            const w = parseFloat(drawingBox.style.width);
+            const h = parseFloat(drawingBox.style.height);
+            if (w > 10 && h > 10) {
+                rdState.masks.push({
+                    id: `m_${++rdState.maskIdCounter}`,
+                    type: 'manual',
+                    page: rdState.currentPage,
+                    rect: {
+                        x: parseFloat(drawingBox.style.left),
+                        y: parseFloat(drawingBox.style.top),
+                        w, h
+                    },
+                    label: '수동 마스킹',
+                    originalText: '사용자 지정 영역'
+                });
+            }
+            drawingBox.remove();
+            drawingBox = null;
+            renderMasks();
+            updateResultUI();
+        }
+    });
+
+    // ============== Result List UI ==============
+    function updateResultUI() {
+        rdDom.maskCount.textContent = `${rdState.masks.length}건`;
+        rdDom.actionDesc.textContent = `총 ${rdState.masks.length}건의 마스킹이 적용됩니다.`;
+
+        if (rdState.masks.length === 0) {
+            rdDom.resultList.innerHTML = '<div class="rd-empty-msg">자동 검출을 실행하거나 수동으로 영역을 지정하세요.</div>';
+            return;
+        }
+
+        rdDom.resultList.innerHTML = '';
+        rdState.masks.forEach(mask => {
+            const item = document.createElement('div');
+            item.className = 'rd-result-item';
+            item.addEventListener('click', () => {
+                if (rdState.currentPage !== mask.page) {
+                    rdState.currentPage = mask.page;
+                    renderPage(mask.page);
+                }
+            });
+
+            item.innerHTML = `
+                <div class="rd-info">
+                    <div class="rd-type">${mask.label}</div>
+                    <div class="rd-text">${mask.originalText}</div>
+                    <div class="rd-page">페이지 ${mask.page}</div>
+                </div>
+                <button class="rd-del-btn" title="삭제">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>`;
+            item.querySelector('.rd-del-btn').addEventListener('click', e => {
+                e.stopPropagation();
+                removeMask(mask.id);
+            });
+            rdDom.resultList.appendChild(item);
+        });
+    }
+
+    // ============== Flatten & Save ==============
+    rdDom.saveBtn.addEventListener('click', async () => {
+        if (!rdState.file || !rdState.pdfDoc) return;
+        if (rdState.masks.length === 0) {
+            showToast('마스킹된 항목이 없습니다.', 'warning');
+            return;
+        }
+
+        const dpi = parseInt(rdDom.saveDpi.value, 10);
+        const exportScale = dpi / 72; // PDF 기본 72ppi
+        showLoading('비식별화 PDF 생성 중 (플래튼 처리)...');
+
+        try {
+            const newPdf = await PDFLib.PDFDocument.create();
+
+            for (let p = 1; p <= rdState.numPages; p++) {
+                updateLoading(`페이지 ${p}/${rdState.numPages} 렌더링 중...`, (p / rdState.numPages) * 100);
+
+                const page = await rdState.pdfDoc.getPage(p);
+                const viewport = page.getViewport({ scale: exportScale });
+
+                // 오프스크린 캔버스에 원본 렌더링
+                const canvas = document.createElement('canvas');
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+                const ctx = canvas.getContext('2d');
+                await page.render({ canvasContext: ctx, viewport }).promise;
+
+                // 마스크를 캔버스 위에 직접 그리기 (스케일 보정)
+                const pageMasks = rdState.masks.filter(m => m.page === p);
+                const scaleRatio = exportScale / rdState.renderScale;
+                ctx.fillStyle = rdState.maskColor === 'black' ? '#000000' : '#FFFFFF';
+                pageMasks.forEach(mask => {
+                    ctx.fillRect(
+                        mask.rect.x * scaleRatio,
+                        mask.rect.y * scaleRatio,
+                        mask.rect.w * scaleRatio,
+                        mask.rect.h * scaleRatio
+                    );
+                });
+
+                // PNG blob → pdf-lib 이미지 임베딩
+                const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+                const arrBuf = await blob.arrayBuffer();
+                const pdfImage = await newPdf.embedPng(arrBuf);
+
+                // 원래 페이지 크기(72ppi 기준)로 새 페이지 추가
+                const origVp = page.getViewport({ scale: 1.0 });
+                const newPage = newPdf.addPage([origVp.width, origVp.height]);
+                newPage.drawImage(pdfImage, {
+                    x: 0, y: 0,
+                    width: origVp.width,
+                    height: origVp.height
+                });
+            }
+
+            updateLoading('파일 저장 중...', 100);
+            const pdfBytes = await newPdf.save();
+            const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+
+            let baseName = rdState.file.name;
+            if (baseName.toLowerCase().endsWith('.pdf')) baseName = baseName.slice(0, -4);
+            saveAs(blob, `${baseName}_redacted.pdf`);
+
+            hideLoading();
+            showToast('비식별화가 완료되었습니다. 원본 텍스트가 완전히 제거되었습니다.', 'success');
+        } catch (err) {
+            hideLoading();
+            showToast('저장 중 오류가 발생했습니다.', 'error');
+            console.error('[Redact] flatten save error:', err);
+        }
+    });
 })();
 

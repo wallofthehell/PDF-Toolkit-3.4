@@ -1833,4 +1833,293 @@ body {
     border-color: rgba(255, 255, 255, 0.3);
 }
 
+/* ========================================
+   Redact Tab — Red Security Theme
+   ======================================== */
 
+/* Tab button active state */
+#tabRedact.active {
+    background: rgba(239, 68, 68, 0.12);
+    border-color: rgba(248, 113, 113, 0.35);
+    color: #f87171;
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.1);
+}
+
+/* Drop zone hover */
+#redactSection .drop-zone:hover,
+#redactSection .drop-zone.drag-over {
+    border-color: #f87171;
+}
+#redactSection .drop-zone:hover::before,
+#redactSection .drop-zone.drag-over::before {
+    background: linear-gradient(135deg, rgba(248, 113, 113, 0.05), rgba(220, 38, 38, 0.02));
+}
+
+/* Primary buttons red */
+#redactSection .btn-primary {
+    background: linear-gradient(135deg, #991b1b, #dc2626, #f87171);
+    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.2);
+}
+#redactSection .btn-primary:hover {
+    background: linear-gradient(135deg, #7f1d1d, #b91c1c, #ef4444);
+    box-shadow: 0 4px 20px rgba(239, 68, 68, 0.3);
+}
+
+/* Badges & icons red */
+#redactSection .badge {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+}
+#redactSection .section-title svg {
+    color: #f87171;
+}
+
+/* --- Options card --- */
+.rd-options-card {
+    margin-bottom: 16px;
+    padding: 16px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius-md);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+.rd-options-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+.rd-color-group {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+}
+.rd-radio-label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+}
+.rd-category-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.rd-category-row label {
+    cursor: pointer;
+    user-select: none;
+}
+
+/* --- Viewer + Results grid --- */
+.rd-layout {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 16px;
+    height: 600px;
+    margin-bottom: 80px;
+}
+@media (max-width: 900px) {
+    .rd-layout {
+        grid-template-columns: 1fr;
+        height: auto;
+    }
+    .rd-canvas-container { height: 500px; }
+    .rd-result-panel { height: 300px; }
+}
+
+/* --- Viewer panel --- */
+.rd-viewer-panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+}
+.rd-viewer-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+.rd-nav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.rd-modes {
+    display: flex;
+    gap: 8px;
+}
+.rd-modes .btn-text {
+    padding: 4px 10px;
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius-sm);
+}
+.rd-modes .btn-text.active {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+    border-color: rgba(248, 113, 113, 0.4);
+}
+
+.rd-canvas-container {
+    flex: 1;
+    overflow: auto;
+    background: var(--bg-secondary);
+    border-radius: 4px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 16px;
+    position: relative;
+    user-select: none;
+}
+.rd-canvas-container.drawing {
+    cursor: crosshair;
+}
+
+#rdCanvasBase {
+    max-width: 100%;
+    box-shadow: var(--shadow-md);
+}
+#rdMaskLayer {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+}
+
+/* --- Result panel --- */
+.rd-result-panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius-md);
+    display: flex;
+    flex-direction: column;
+}
+.rd-result-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-medium);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--text-primary);
+}
+.rd-result-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+}
+.rd-empty-msg {
+    color: var(--text-muted);
+    text-align: center;
+    padding: 20px;
+    font-size: 0.9em;
+}
+
+/* --- Mask overlay boxes --- */
+.rd-mask-box {
+    position: absolute;
+    cursor: pointer;
+    border-radius: 2px;
+    box-sizing: border-box;
+    opacity: 0.85;
+    transition: opacity 0.15s;
+}
+.rd-mask-box:hover {
+    opacity: 1;
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.8);
+}
+.rd-mask-box.auto {
+    border: 1.5px solid rgba(239, 68, 68, 0.6);
+}
+.rd-mask-box.manual {
+    border: 1.5px dashed rgba(239, 68, 68, 0.8);
+}
+
+/* Delete badge on hover */
+.rd-mask-delete {
+    position: absolute;
+    top: -10px; right: -10px;
+    width: 20px; height: 20px;
+    background: #ef4444;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    z-index: 10;
+}
+.rd-mask-box:hover .rd-mask-delete {
+    opacity: 1;
+}
+
+/* --- Detection result items --- */
+.rd-result-item {
+    padding: 10px;
+    margin-bottom: 8px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-subtle);
+    border-radius: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+}
+.rd-result-item:hover {
+    background: rgba(239, 68, 68, 0.08);
+    border-color: rgba(239, 68, 68, 0.3);
+}
+.rd-result-item .rd-info {
+    flex: 1;
+    overflow: hidden;
+}
+.rd-result-item .rd-type {
+    font-size: 0.8rem;
+    color: #fca5a5;
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+.rd-result-item .rd-text {
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.rd-result-item .rd-page {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+.rd-result-item .rd-del-btn {
+    color: var(--text-muted);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+.rd-result-item .rd-del-btn:hover {
+    color: #f87171;
+    background: rgba(248, 113, 113, 0.1);
+}
+
+/* --- Drawing feedback box --- */
+#rdDrawingBox {
+    position: absolute;
+    border: 2px dashed #f87171;
+    background: rgba(239, 68, 68, 0.2);
+    pointer-events: none;
+    z-index: 100;
+}

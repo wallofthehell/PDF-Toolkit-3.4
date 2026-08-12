@@ -96,6 +96,13 @@
                 </svg>
                 <span>HWP 변환</span>
             </button>
+            <button class="tab-btn" data-tab="redact" id="tabRedact">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                    <path d="M10 2L3 5V9C3 14 6 17 10 18C14 17 17 14 17 9V5L10 2Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                    <circle cx="10" cy="10" r="3" stroke="currentColor" stroke-width="1.5"/>
+                </svg>
+                <span>개인정보 보호</span>
+            </button>
         </nav>
 
         <!-- Merge Section -->
@@ -750,6 +757,134 @@
                         </svg>
                         각각 분리 저장
                     </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Redact (Privacy / De-identification) Section -->
+        <section class="tab-content" id="redactSection">
+            <!-- Drop Zone -->
+            <div class="drop-zone redact-zone" id="rdDropZone">
+                <div class="drop-icon">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                        <circle cx="12" cy="11" r="3" stroke="currentColor" stroke-width="1.5"/>
+                    </svg>
+                </div>
+                <h3>비식별화할 PDF 파일을 드롭하세요</h3>
+                <p>또는 클릭하여 파일을 선택하세요</p>
+                <input type="file" id="rdFileInput" accept="application/pdf" class="file-input">
+            </div>
+
+            <div id="rdWorkspace" class="hidden">
+                <!-- File Info Bar -->
+                <div class="section-header" style="margin-bottom:16px">
+                    <h2 class="section-title">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            <polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <span id="rdFileName">파일명</span>
+                        <span class="badge" id="rdFilePages">0 페이지</span>
+                    </h2>
+                    <div class="section-actions">
+                        <button class="btn-text" id="rdClearBtn" title="파일 제거">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            제거
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Options Card -->
+                <div class="rd-options-card">
+                    <div class="rd-options-row">
+                        <div class="rd-color-group">
+                            <strong>마스킹 색상:</strong>
+                            <label class="rd-radio-label"><input type="radio" name="rdColor" value="black" checked> 검은색</label>
+                            <label class="rd-radio-label"><input type="radio" name="rdColor" value="white"> 흰색</label>
+                        </div>
+                        <button class="btn-primary" id="rdDetectBtn">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="margin-right:6px">
+                                <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            </svg>
+                            자동 검출 시작
+                        </button>
+                    </div>
+                    <div class="rd-category-row" id="rdCategoryChecks">
+                        <label><input type="checkbox" value="ssn" checked> 주민등록번호</label>
+                        <label><input type="checkbox" value="phone" checked> 전화번호</label>
+                        <label><input type="checkbox" value="email" checked> 이메일</label>
+                        <label><input type="checkbox" value="card" checked> 카드번호</label>
+                        <label><input type="checkbox" value="account" checked> 계좌번호</label>
+                        <label><input type="checkbox" value="passport" checked> 여권번호</label>
+                        <label><input type="checkbox" value="license" checked> 운전면허번호</label>
+                    </div>
+                </div>
+
+                <!-- Viewer + Results Layout -->
+                <div class="rd-layout">
+                    <!-- Viewer Panel -->
+                    <div class="rd-viewer-panel">
+                        <div class="rd-viewer-toolbar">
+                            <div class="rd-nav">
+                                <button class="btn-icon" id="rdPrevPage"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                                <span id="rdPageInfo">1 / 1</span>
+                                <button class="btn-icon" id="rdNextPage"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                            </div>
+                            <div class="rd-modes">
+                                <button class="btn-text active" id="rdModeSelect">선택 모드</button>
+                                <button class="btn-text" id="rdModeDraw">수동 마스킹</button>
+                            </div>
+                        </div>
+                        <div id="rdCanvasWrap" class="rd-canvas-container">
+                            <div id="rdCanvasInner" style="position:relative;line-height:0">
+                                <canvas id="rdCanvasBase"></canvas>
+                                <div id="rdMaskLayer"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Results Panel -->
+                    <div class="rd-result-panel">
+                        <div class="rd-result-header">
+                            <strong>마스킹 목록</strong>
+                            <span class="badge" id="rdMaskCount">0건</span>
+                        </div>
+                        <div id="rdResultList" class="rd-result-list">
+                            <div class="rd-empty-msg">자동 검출을 실행하거나 수동으로 영역을 지정하세요.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Bar -->
+                <div class="action-bar" id="rdActionBar" style="transform:translateY(0)">
+                    <div class="action-content">
+                        <div class="action-info">
+                            <span class="action-title" id="rdActionTitle">비식별화 준비 완료</span>
+                            <span class="action-desc" id="rdActionDesc">총 0건의 마스킹이 적용됩니다.</span>
+                        </div>
+                        <div class="action-controls" style="display:flex;gap:16px;align-items:center">
+                            <label style="display:flex;align-items:center;gap:8px;color:var(--text-secondary);font-size:0.9em">
+                                해상도:
+                                <select id="rdSaveDpi" class="select-input" style="background:var(--bg-primary);color:var(--text-primary);border:1px solid var(--border-medium);border-radius:4px;padding:4px 8px">
+                                    <option value="150">150 DPI (경량)</option>
+                                    <option value="200" selected>200 DPI (권장)</option>
+                                    <option value="300">300 DPI (고품질)</option>
+                                </select>
+                            </label>
+                            <button class="btn-primary btn-lg" id="rdSaveBtn" title="마스킹을 이미지로 병합하여 원본을 완전히 제거합니다">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    <polyline points="17 21 17 13 7 13 7 21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    <polyline points="7 3 7 8 15 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                                비식별화 PDF 저장
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
