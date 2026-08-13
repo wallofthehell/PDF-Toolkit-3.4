@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="PDF 파일 병합, 분할, 회전 도구 - 브라우저에서 바로 사용하는 무료 PDF 편집기">
-    <title>PDF Toolkit — HWP변환 · 병합 · 분할 · 워터마크 · 프린트변환</title>
+    <title>PDF Toolkit v5.0 — HWP변환 · 병합 · 분할 · 워터마크 · 프린트변환 · 개인정보 가리기</title>
     <link rel="icon" href="favicon.ico" type="image/x-icon">
     <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
     <link rel="apple-touch-icon" href="favicon.png">
@@ -50,7 +50,7 @@
                 </div>
                 <div>
                     <h1 class="logo-text">PDF Toolkit</h1>
-                    <p class="logo-sub">병합 · 분할 · 워터마크 · 프린트변환</p>
+                    <p class="logo-sub">v5.0 — 병합 · 분할 · 워터마크 · 프린트변환 · 개인정보 가리기</p>
                 </div>
             </div>
         </header>
@@ -101,7 +101,7 @@
                     <path d="M10 2L3 5V9C3 14 6 17 10 18C14 17 17 14 17 9V5L10 2Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
                     <circle cx="10" cy="10" r="3" stroke="currentColor" stroke-width="1.5"/>
                 </svg>
-                <span>개인정보 보호</span>
+                <span>개인정보 가리기</span>
             </button>
         </nav>
 
@@ -657,7 +657,7 @@
                     <div class="step-box">
                         <span class="step-num">해결법</span>
                         <div class="step-desc">
-                            현재 폴더에 있는 <strong style="color:#60a5fa; font-weight:700;">PDF_Toolkit_실행.bat</strong> (또는 <strong style="color:#60a5fa; font-weight:700;">PDF Toolkit v4 실행 아이콘</strong>)을 더블클릭해서 실행해 주세요!<br>
+                            현재 폴더에 있는 <strong style="color:#60a5fa; font-weight:700;">PDF_Toolkit_실행.bat</strong> (또는 <strong style="color:#60a5fa; font-weight:700;">PDF Toolkit v5 실행 아이콘</strong>)을 더블클릭해서 실행해 주세요!<br>
                             <span style="font-size:0.82rem; color:#94a3b8;">💡 실행 즉시 검은 도스창 없이 자동으로 켜지며 상단 상태등이 녹색(ON)으로 전환됩니다.</span>
                         </div>
                     </div>
@@ -764,14 +764,14 @@
         <!-- Redact (Privacy / De-identification) Section -->
         <section class="tab-content" id="redactSection">
             <!-- Drop Zone -->
-            <div class="drop-zone redact-zone" id="rdDropZone">
+            <div class="drop-zone redact-zone" id="rdDropZone" style="padding-left: 80px">
                 <div class="drop-icon">
                     <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
                         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
                         <circle cx="12" cy="11" r="3" stroke="currentColor" stroke-width="1.5"/>
                     </svg>
                 </div>
-                <h3>비식별화할 PDF 파일을 드롭하세요</h3>
+                <h3>개인정보를 가릴 PDF 파일을 드롭하세요</h3>
                 <p>또는 클릭하여 파일을 선택하세요</p>
                 <input type="file" id="rdFileInput" accept="application/pdf" class="file-input">
             </div>
